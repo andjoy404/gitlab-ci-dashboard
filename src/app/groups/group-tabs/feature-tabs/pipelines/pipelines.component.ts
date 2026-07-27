@@ -56,6 +56,7 @@ export class PipelinesComponent implements OnInit {
   filterTopics = signal<string[]>([])
   filterStatuses = signal<Status[]>([])
   pinnedPipelines = signal<PipelineId[]>(this.getPinnedPipelines())
+  effectiveStatuses = signal<ReadonlyMap<PipelineId, Status>>(new Map())
 
   projectPipelines = signal<ProjectPipelines[]>([])
   loading = signal(false)
@@ -65,7 +66,8 @@ export class PipelinesComponent implements OnInit {
     const counts = new Map<Status, number>()
 
     for (const { pipelines } of this.projectPipelines()) {
-      for (const { status } of pipelines) {
+      for (const pipeline of pipelines) {
+        const status = this.effectiveStatuses().get(pipeline.id) ?? pipeline.status
         counts.set(status, (counts.get(status) ?? 0) + 1)
       }
     }
@@ -75,7 +77,16 @@ export class PipelinesComponent implements OnInit {
 
   filteredProjectPipelines = computed(() => {
     return this.projectPipelines()
-      .flatMap(({ project, pipelines, group_id }) => pipelines.map((pipeline) => ({ project, pipeline, group_id })))
+      .flatMap(({ project, pipelines, group_id }) =>
+        pipelines.map((pipeline) => ({
+          project,
+          pipeline: {
+            ...pipeline,
+            status: this.effectiveStatuses().get(pipeline.id) ?? pipeline.status
+          },
+          group_id
+        }))
+      )
       .filter(({ pipeline, project }) => {
         return (
           filterProject(project, this.filterTextProject(), this.filterTopics()) &&
@@ -140,6 +151,16 @@ export class PipelinesComponent implements OnInit {
   onPinnedPipelinesChanged(pinnedPipelines: PipelineId[]) {
     this.pinnedPipelines.set(pinnedPipelines)
     this.savePinnedPipelines(pinnedPipelines)
+  }
+
+  onPipelineStatusChanged({ pipelineId, status }: { pipelineId: PipelineId; status?: Status }): void {
+    const statuses = new Map(this.effectiveStatuses())
+    if (status) {
+      statuses.set(pipelineId, status)
+    } else {
+      statuses.delete(pipelineId)
+    }
+    this.effectiveStatuses.set(statuses)
   }
 
   private loadPipelines(refresh: boolean, activity: { set(value: boolean): void }): void {

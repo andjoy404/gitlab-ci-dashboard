@@ -8,7 +8,7 @@ import { projectNamespacePath } from '$groups/util/project-path'
 import { Header } from '$groups/util/table'
 import { ConfigService } from '$service/config.service'
 import { CommonModule } from '@angular/common'
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, Signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, Signal } from '@angular/core'
 import { NzBadgeModule } from 'ng-zorro-antd/badge'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzI18nService } from 'ng-zorro-antd/i18n'
@@ -98,6 +98,7 @@ export class PipelineTableComponent {
 
   projectPipelines = input.required<ProjectPipeline[]>()
   pinnedPipelines = model.required<PipelineId[]>()
+  pipelineStatusChange = output<{ pipelineId: PipelineId; status?: Status }>()
 
   headers: ResizableHeader<ProjectPipeline>[] = headers
   projectNamespacePath = projectNamespacePath
@@ -136,6 +137,10 @@ export class PipelineTableComponent {
 
   getScope(status?: Status): Status[] {
     return statusToScope(status)
+  }
+
+  onDownstreamStatusChange(pipelineId: PipelineId, status?: Status): void {
+    this.pipelineStatusChange.emit({ pipelineId, status })
   }
 
   onHeaderResize({ width }: NzResizeEvent, header: ResizableHeader<ProjectPipeline>): void {

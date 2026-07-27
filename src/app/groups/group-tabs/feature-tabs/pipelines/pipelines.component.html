@@ -50,6 +50,7 @@
       [projectPipelines]="filteredProjectPipelines()"
       [pinnedPipelines]="pinnedPipelines()"
       (pinnedPipelinesChange)="onPinnedPipelinesChanged($event)"
+      (pipelineStatusChange)="onPipelineStatusChanged($event)"
     />
   }
 </div>

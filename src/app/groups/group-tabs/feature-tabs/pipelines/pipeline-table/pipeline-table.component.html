@@ -83,7 +83,12 @@
         </td>
         <td>
           @if (data.pipeline; as pipeline) {
-            <gcd-jobs [projectId]="data.project.id" [pipelineId]="pipeline.id" [scope]="getScope(pipeline.status)" />
+            <gcd-jobs
+              [projectId]="data.project.id"
+              [pipelineId]="pipeline.id"
+              [scope]="getScope(pipeline.status)"
+              (downstreamStatusChange)="onDownstreamStatusChange(pipeline.id, $event)"
+            />
           } @else {
             -
           }

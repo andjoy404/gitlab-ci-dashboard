@@ -14,6 +14,7 @@ import {
   SimpleChanges,
   inject,
   input,
+  output,
   runInInjectionContext,
   signal
 } from '@angular/core'
@@ -65,6 +66,7 @@ export class JobsComponent implements OnChanges, OnDestroy {
   projectId = input.required<ProjectId>()
   pipelineId = input.required<PipelineId>()
   scope = input<Status[]>([])
+  downstreamStatusChange = output<Status | undefined>()
 
   tags = signal<Tag[]>([])
   loading = signal(true)
@@ -118,6 +120,7 @@ export class JobsComponent implements OnChanges, OnDestroy {
         ),
         tap(() => this.loading.set(false)),
         map((jobs) => {
+          this.downstreamStatusChange.emit(this.getDownstreamStatus(jobs, pipeline_id))
           return jobs.map((job) => {
             const icon = this.getTagIcon(job)
             const spin = RUNNABLE_STATUSES.includes(job.status)
@@ -138,6 +141,24 @@ export class JobsComponent implements OnChanges, OnDestroy {
 
   private hasActiveJobs(jobs: Job[]): boolean {
     return jobs.some(({ status }) => POLLING_STATUSES.includes(status))
+  }
+
+  private getDownstreamStatus(jobs: Job[], parentPipelineId: PipelineId): Status | undefined {
+    const downstreamJobs = jobs.filter(
+      (job) => job.pipeline.id !== parentPipelineId && !(job.status === Status.FAILED && job.allow_failure)
+    )
+
+    const priority: Status[] = [
+      Status.RUNNING,
+      Status.PENDING,
+      Status.PREPARING,
+      Status.WAITING_FOR_RESOURCE,
+      Status.CREATED,
+      Status.FAILED,
+      Status.CANCELED
+    ]
+
+    return priority.find((status) => downstreamJobs.some((job) => job.status === status))
   }
 
   private getTagIcon(job: Job): string {
