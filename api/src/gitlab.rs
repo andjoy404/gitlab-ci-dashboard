@@ -43,12 +43,6 @@ pub trait GitlabApi: Send + Sync {
         updated_after: Option<DateTime<Utc>>,
     ) -> Result<Vec<Pipeline>, ApiError>;
 
-    async fn newest_pipeline(&self, project_id: u64) -> Result<Vec<Pipeline>, ApiError> {
-        let mut pipelines = self.pipelines(project_id, None).await?;
-        pipelines.truncate(1);
-        Ok(pipelines)
-    }
-
     async fn retry_pipeline(&self, project_id: u64, pipeline_id: u64)
         -> Result<Pipeline, ApiError>;
 
@@ -407,17 +401,6 @@ impl GitlabApi for GitlabClient {
 
         let path = format!("/projects/{project_id}/pipelines");
         self.get_all_pages(path, params.to_vec()).await
-    }
-
-    async fn newest_pipeline(&self, project_id: u64) -> Result<Vec<Pipeline>, ApiError> {
-        let params = [
-            ("page".to_string(), "1".to_string()),
-            ("per_page".to_string(), "1".to_string()),
-            ("order_by".to_string(), "updated_at".to_string()),
-            ("sort".to_string(), "desc".to_string()),
-        ];
-        let path = format!("/projects/{project_id}/pipelines");
-        self.do_get_parsed(path, params.to_vec()).await
     }
 
     async fn retry_pipeline(

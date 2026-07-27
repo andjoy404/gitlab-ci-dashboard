@@ -22,7 +22,6 @@ impl CacheKey {
 #[derive(Clone)]
 pub struct PipelineService {
     cache_latest: Cache<CacheKey, Option<Pipeline>>,
-    cache_newest: Cache<u64, Vec<Pipeline>>,
     cache_all: Cache<u64, Vec<Pipeline>>,
     client: Arc<dyn GitlabApi>,
     config: AppConfig,
@@ -36,13 +35,8 @@ impl PipelineService {
         let cache_all = Cache::builder()
             .time_to_live(config.ttl_pipeline_cache)
             .build();
-        let cache_newest = Cache::builder()
-            .time_to_live(config.ttl_pipeline_cache)
-            .build();
-
         Self {
             cache_latest,
-            cache_newest,
             cache_all,
             client,
             config,
@@ -117,25 +111,43 @@ impl PipelineService {
         }
     }
 
-    pub async fn get_newest_pipeline(
+    pub async fn get_newest_pipelines_by_branch(
         &self,
         project_id: u64,
         refresh: bool,
     ) -> Result<Vec<Pipeline>, ApiError> {
         if refresh {
-            self.cache_newest.invalidate(&project_id).await;
-        } else if let Some(pipelines) = self.cache_newest.get(&project_id).await {
+            self.cache_all.invalidate(&project_id).await;
+        } else if let Some(pipelines) = self.cache_all.get(&project_id).await {
             if !pipelines.iter().any(|pipeline| is_active(&pipeline.status)) {
-                return Ok(pipelines);
+                return Ok(latest_by_branch(pipelines));
             }
-            self.cache_newest.invalidate(&project_id).await;
+            self.cache_all.invalidate(&project_id).await;
         }
 
-        self.cache_newest
-            .try_get_with(project_id, self.client.newest_pipeline(project_id))
+        self.get_pipelines(project_id, None)
             .await
-            .map_err(|error| error.as_ref().to_owned())
+            .map(latest_by_branch)
     }
+}
+
+fn latest_by_branch(pipelines: Vec<Pipeline>) -> Vec<Pipeline> {
+    let mut newest = HashMap::<String, Pipeline>::new();
+
+    for pipeline in pipelines {
+        newest
+            .entry(pipeline.branch.clone())
+            .and_modify(|current| {
+                if pipeline.updated_at > current.updated_at {
+                    *current = pipeline.clone();
+                }
+            })
+            .or_insert(pipeline);
+    }
+
+    let mut pipelines = newest.into_values().collect::<Vec<_>>();
+    pipelines.sort_unstable_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    pipelines
 }
 
 fn is_active(status: &crate::model::PipelineStatus) -> bool {
