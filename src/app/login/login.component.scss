@@ -1,6 +1,6 @@
 .login-page {
   display: grid;
-  min-height: calc(100vh - 3.75rem);
+  min-height: calc(100vh - 4rem);
   padding: 2rem;
   place-items: center;
   background: linear-gradient(145deg, #f5f7ff, #eee9ff);
@@ -27,6 +27,27 @@
   border-radius: 10px;
   background: linear-gradient(135deg, #6272a4, #bd93f9);
   place-items: center;
+}
+
+.login-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.login-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: #676b7e;
+  border-radius: 7px;
+}
+
+.login-theme-toggle:hover,
+.login-theme-toggle:focus {
+  color: #7652c7;
+  background: #f2edfc;
 }
 
 h1 {
@@ -69,5 +90,15 @@ button {
   p,
   label {
     color: #c9cbd6;
+  }
+
+  .login-theme-toggle {
+    color: #d7d8e2;
+  }
+
+  .login-theme-toggle:hover,
+  .login-theme-toggle:focus {
+    color: #f8f8f2;
+    background: #4a4d60;
   }
 }

@@ -1,20 +1,23 @@
 import { AuthService } from '$service/auth.service'
+import { ThemeService } from '$service/theme.service'
 import { HttpErrorResponse } from '@angular/common/http'
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzIconModule } from 'ng-zorro-antd/icon'
 import { NzInputModule } from 'ng-zorro-antd/input'
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip'
 
 @Component({
   selector: 'gcd-login',
-  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule],
+  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzTooltipModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LoginComponent {
   private auth = inject(AuthService)
+  theme = inject(ThemeService)
 
   username = signal('')
   password = signal('')

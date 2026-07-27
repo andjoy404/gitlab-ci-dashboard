@@ -1,5 +1,11 @@
 <header class="header">
-  <strong class="dashboard-name">Gitlab CI Dashboard</strong>
+  <div class="dashboard-brand">
+    <span class="dashboard-mark" aria-hidden="true">CI</span>
+    <span class="dashboard-copy">
+      <strong>Gitlab CI Dashboard</strong>
+      <small>Pipeline observability</small>
+    </span>
+  </div>
   @if (auth.authenticated()) {
     <div class="header-actions">
       <button
