@@ -77,6 +77,16 @@ impl PipelineService {
         project_id: u64,
         branch: String,
     ) -> Result<Option<Pipeline>, ApiError> {
+        if let Some(pipelines) = self.cache_all.get(&project_id).await {
+            if let Some(pipeline) = pipelines
+                .into_iter()
+                .filter(|pipeline| pipeline.branch == branch)
+                .max_by(|a, b| a.updated_at.cmp(&b.updated_at))
+            {
+                return Ok(Some(pipeline));
+            }
+        }
+
         self.cache_latest
             .try_get_with(CacheKey::new(project_id, branch.clone()), async {
                 self.client.latest_pipeline(project_id, branch).await
