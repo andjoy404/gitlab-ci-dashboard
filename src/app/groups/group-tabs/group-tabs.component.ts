@@ -1,20 +1,17 @@
 import { Group, GroupId } from '$groups/model/group'
 import { GroupService } from '$groups/service/group.service'
 import { filterNotNull } from '$groups/util/filter'
+import { FavoritesPanelService } from '$service/favorites-panel.service'
 
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core'
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop'
 import { ActivatedRoute, Router } from '@angular/router'
 import { NzAlertModule } from 'ng-zorro-antd/alert'
 import { NzButtonModule } from 'ng-zorro-antd/button'
-import { NzIconModule } from 'ng-zorro-antd/icon'
 import { NzSpinModule } from 'ng-zorro-antd/spin'
-import { NzTabChangeEvent, NzTabsModule } from 'ng-zorro-antd/tabs'
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip'
 import { finalize, map } from 'rxjs'
 import { FavoritesComponent } from './favorites/favorites.component'
 import { FeatureTabsComponent } from './feature-tabs/feature-tabs.component'
-import { MaxLengthPipe } from './feature-tabs/pipes/max-length.pipe'
 import { ProjectId } from '$groups/model/project'
 
 @Component({
@@ -22,31 +19,28 @@ import { ProjectId } from '$groups/model/project'
   imports: [
     NzAlertModule,
     NzButtonModule,
-    NzTabsModule,
     NzSpinModule,
-    NzTooltipModule,
-    NzIconModule,
     FeatureTabsComponent,
-    MaxLengthPipe,
     FavoritesComponent
-],
+  ],
   templateUrl: './group-tabs.component.html',
   styleUrls: ['./group-tabs.component.scss']
 })
 export class GroupTabsComponent {
   private groupService = inject(GroupService)
   private destroyRef = inject(DestroyRef)
+  favorites = inject(FavoritesPanelService)
 
   groups = signal<Group[]>([])
   loading = signal(false)
 
-  showFavorites = signal(false)
   selectedGroupId = signal<number | undefined>(undefined)
   selectedIndex = computed(() => {
     const selectedGroupId = this.selectedGroupId()
     const groups = this.groups()
     return groups.findIndex(({ id }) => id === selectedGroupId)
   })
+  selectedGroup = computed(() => this.groups().find(({ id }) => id === this.selectedGroupId()))
 
   constructor(
     private route: ActivatedRoute,
@@ -60,7 +54,7 @@ export class GroupTabsComponent {
 
     effect(() => {
       if (this.selectedIndex() === -1) {
-        this.onChange({ index: 0, tab: null })
+        this.onChange({ index: 0 })
       }
     })
 
@@ -86,24 +80,16 @@ export class GroupTabsComponent {
     })
   }
 
-  toggleFavorites(): void {
-    this.showFavorites.set(!this.showFavorites())
-  }
-
   onReload(): void {
     window.location.reload()
   }
 
-  onChange({ index }: NzTabChangeEvent): void {
+  onChange({ index }: { index: number }): void {
     const groups = this.groups()
     if (groups.length > 0) {
-      const { id } = groups.at(index!)!
+      const { id } = groups.at(index)!
       this.nagivate(id)
     }
-  }
-
-  trackById({ id }: Group): GroupId {
-    return id
   }
 
   getGroupMap({ id }: Group): Map<GroupId, Set<ProjectId>> {

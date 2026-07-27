@@ -1,0 +1,73 @@
+.login-page {
+  display: grid;
+  min-height: calc(100vh - 3.75rem);
+  padding: 2rem;
+  place-items: center;
+  background: linear-gradient(145deg, #f5f7ff, #eee9ff);
+}
+
+.login-card {
+  display: grid;
+  width: min(100%, 380px);
+  gap: 0.75rem;
+  padding: 2rem;
+  border: 1px solid #e5e5ef;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 16px 45px rgb(40 42 54 / 12%);
+}
+
+.login-mark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 0.25rem;
+  color: white;
+  font-weight: 700;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6272a4, #bd93f9);
+  place-items: center;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+p {
+  margin: -0.35rem 0 0.75rem;
+  color: #727586;
+}
+
+label {
+  color: #4c4f60;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.login-error {
+  color: #cf3340;
+  font-size: var(--font-size-small);
+}
+
+button {
+  margin-top: 0.5rem;
+}
+
+:host-context(.dracula-theme) {
+  .login-page {
+    background: linear-gradient(145deg, #30323f, #3b3850);
+  }
+
+  .login-card {
+    color: #f8f8f2;
+    border-color: #5c6075;
+    background: #3b3e4e;
+    box-shadow: 0 16px 45px rgb(20 21 28 / 35%);
+  }
+
+  p,
+  label {
+    color: #c9cbd6;
+  }
+}

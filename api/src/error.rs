@@ -40,6 +40,12 @@ impl ApiError {
             .map(|s| s == StatusCode::FORBIDDEN)
             .unwrap_or(false)
     }
+
+    pub fn is_too_many_requests(&self) -> bool {
+        StatusCode::from_u16(self.status_code)
+            .map(|s| s == StatusCode::TOO_MANY_REQUESTS)
+            .unwrap_or(false)
+    }
 }
 
 impl Default for ApiError {

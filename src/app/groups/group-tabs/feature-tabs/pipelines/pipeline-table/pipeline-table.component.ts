@@ -4,6 +4,7 @@ import { ProjectPipeline } from '$groups/model/project'
 import { Status } from '$groups/model/status'
 import { compareString, compareStringDate } from '$groups/util/compare'
 import { statusToScope } from '$groups/util/status-scope'
+import { projectNamespacePath } from '$groups/util/project-path'
 import { Header } from '$groups/util/table'
 import { ConfigService } from '$service/config.service'
 import { CommonModule } from '@angular/common'
@@ -12,6 +13,7 @@ import { NzBadgeModule } from 'ng-zorro-antd/badge'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzI18nService } from 'ng-zorro-antd/i18n'
 import { NzIconModule } from 'ng-zorro-antd/icon'
+import { NzResizableModule, NzResizeEvent } from 'ng-zorro-antd/resizable'
 import { NzSpinModule } from 'ng-zorro-antd/spin'
 import { NzTableModule } from 'ng-zorro-antd/table'
 import { NzTagModule } from 'ng-zorro-antd/tag'
@@ -22,31 +24,41 @@ import { OpenGitlabIconComponent } from '../../components/open-gitlab-icon/open-
 import { WriteActionsIconComponent } from '../../components/write-actions-icon/write-actions-icon.component'
 import { StatusColorPipe } from '../../pipes/status-color.pipe'
 import { TablePaginatorDirective } from '../../directives/table-paginator.directive'
+import { TableActionsComponent } from '../../components/table-actions/table-actions.component'
 
-const headers: Header<ProjectPipeline>[] = [
-  { title: 'Project', sortable: true, compare: (a, b) => compareString(a.project.name, b.project.name) },
-   {
+interface ResizableHeader<T> extends Header<T> {
+  width: number
+}
+
+const headers: ResizableHeader<ProjectPipeline>[] = [
+  {
     title: 'Group',
+    width: 320,
     sortable: true,
-    compare: (a, b) => compareString(a.project.namespace.name, b.project.namespace.name)
+    compare: (a, b) => compareString(projectNamespacePath(a.project), projectNamespacePath(b.project))
   },
+  { title: 'Project', width: 220, sortable: true, compare: (a, b) => compareString(a.project.name, b.project.name) },
   {
     title: 'Branch',
+    width: 300,
     sortable: true,
     compare: (a, b) => compareString(a.project.default_branch, b.project.default_branch)
   },
   {
     title: 'Trigger',
+    width: 190,
     sortable: true,
     compare: (a, b) => compareString(a.pipeline?.source, b.pipeline?.source)
   },
   {
     title: 'Last Run',
+    width: 210,
     sortable: true,
     compare: (a, b) => compareStringDate(a.pipeline?.updated_at, b.pipeline?.updated_at)
   },
   {
     title: 'Status',
+    width: 130,
     sortable: true,
     compare: (a, b) => compareString(a.pipeline?.status, b.pipeline?.status)
   }
@@ -64,6 +76,7 @@ const semverRegex =
     NzButtonModule,
     NzBadgeModule,
     NzIconModule,
+    NzResizableModule,
     NzSpinModule,
     NzTagModule,
     StatusColorPipe,
@@ -72,6 +85,7 @@ const semverRegex =
     DownloadArtifactsIconComponent,
     WriteActionsIconComponent,
     OpenGitlabIconComponent,
+    TableActionsComponent,
     TablePaginatorDirective
   ],
   templateUrl: './pipeline-table.component.html',
@@ -85,10 +99,21 @@ export class PipelineTableComponent {
   projectPipelines = input.required<ProjectPipeline[]>()
   pinnedPipelines = model.required<PipelineId[]>()
 
-  headers: Header<ProjectPipeline>[] = headers
+  headers: ResizableHeader<ProjectPipeline>[] = headers
+  projectNamespacePath = projectNamespacePath
+  jobsWidth = 900
+  actionWidth = 72
 
   get showWriteActions(): Signal<boolean> {
     return computed(() => !this.config.hideWriteActions())
+  }
+
+  get widthConfig(): string[] {
+    return [...this.headers.map(({ width }) => `${width}px`), `${this.jobsWidth}px`, `${this.actionWidth}px`]
+  }
+
+  get tableWidth(): number {
+    return this.headers.reduce((total, { width }) => total + width, this.jobsWidth + this.actionWidth)
   }
 
   get locale(): string {
@@ -111,6 +136,24 @@ export class PipelineTableComponent {
 
   getScope(status?: Status): Status[] {
     return statusToScope(status)
+  }
+
+  onHeaderResize({ width }: NzResizeEvent, header: ResizableHeader<ProjectPipeline>): void {
+    if (width) {
+      header.width = width
+    }
+  }
+
+  onJobsResize({ width }: NzResizeEvent): void {
+    if (width) {
+      this.jobsWidth = width
+    }
+  }
+
+  onActionResize({ width }: NzResizeEvent): void {
+    if (width) {
+      this.actionWidth = width
+    }
   }
 
   onPinClick(e: Event, { id }: Pipeline): void {

@@ -83,24 +83,39 @@ impl PipelineAggregator {
         &self,
         group_id: u64,
         project_ids: Option<Vec<u64>>,
+        refresh: bool,
     ) -> Result<Vec<ProjectPipelines>, ApiError> {
         let projects = self
             .project_service
             .get_projects(group_id, project_ids)
             .await?;
-        self.with_pipelines(group_id, projects).await
+        self.with_pipelines(group_id, projects, refresh).await
     }
 
     async fn with_pipelines(
         &self,
         group_id: u64,
         projects: Vec<Project>,
+        refresh: bool,
     ) -> Result<Vec<ProjectPipelines>, ApiError> {
         try_collect_with_buffer(projects, |project| async move {
             let pipelines = if project.default_branch.is_some() && project.jobs_enabled {
-                self.pipeline_service
-                    .get_pipelines(project.id, None)
-                    .await?
+                match self
+                    .pipeline_service
+                    .get_newest_pipeline(project.id, refresh)
+                    .await
+                {
+                    Ok(pipelines) => pipelines,
+                    Err(error) if error.is_too_many_requests() => {
+                        log::warn!(
+                            "GitLab rate-limited pipelines for project {}; returning an empty \
+                             pipeline list so other projects can still load",
+                            project.id
+                        );
+                        Vec::new()
+                    }
+                    Err(error) => return Err(error),
+                }
             } else {
                 Vec::default()
             };

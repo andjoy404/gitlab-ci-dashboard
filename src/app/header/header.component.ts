@@ -1,7 +1,9 @@
 
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip'
 
-import { ConfigService } from '$service/config.service'
+import { AuthService } from '$service/auth.service'
+import { FavoritesPanelService } from '$service/favorites-panel.service'
+import { ThemeService } from '$service/theme.service'
 import { Component, inject } from '@angular/core'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzIconModule } from 'ng-zorro-antd/icon'
@@ -13,8 +15,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon'
   styleUrls: ['./header.component.scss']
 })
 export class HeaderComponent {
-  private config = inject(ConfigService)
-  readonly version = this.config.version
+  readonly auth = inject(AuthService)
+  readonly favorites = inject(FavoritesPanelService)
+  readonly theme = inject(ThemeService)
 
   onClick(): void {
     window.open('https://github.com/larscom/gitlab-ci-dashboard', '_blank')

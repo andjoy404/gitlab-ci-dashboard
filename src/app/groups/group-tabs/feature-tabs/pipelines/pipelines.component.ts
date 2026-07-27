@@ -3,16 +3,22 @@ import { GroupId } from '$groups/model/group'
 import { PipelineId } from '$groups/model/pipeline'
 import { ProjectId, ProjectPipeline, ProjectPipelines } from '$groups/model/project'
 import { Status } from '$groups/model/status'
-import { filterArrayNotNull, filterPipeline, filterProject } from '$groups/util/filter'
+import { filterArrayNotNull, filterPipeline, filterProject, filterString } from '$groups/util/filter'
 import { forkJoinFlatten } from '$groups/util/fork'
+import { projectNamespacePath } from '$groups/util/project-path'
 
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import { NzSpinModule } from 'ng-zorro-antd/spin'
+import { NzButtonModule } from 'ng-zorro-antd/button'
+import { NzIconModule } from 'ng-zorro-antd/icon'
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip'
 import { finalize, interval, switchMap } from 'rxjs'
 import { ProjectFilterComponent } from '../components/project-filter/project-filter.component'
 import { TopicFilterComponent } from '../components/topic-filter/topic-filter.component'
 import { BranchFilterComponent } from './components/branch-filter/branch-filter.component'
+import { GroupFilterComponent } from './components/group-filter/group-filter.component'
+import { PipelineSummaryComponent } from './components/pipeline-summary/pipeline-summary.component'
 import { StatusFilterComponent } from './components/status-filter/status-filter.component'
 import { PipelineTableComponent } from './pipeline-table/pipeline-table.component'
 import { PipelinesService } from './service/pipelines.service'
@@ -23,7 +29,12 @@ const STORAGE_KEY = 'pinned_pipelines'
   selector: 'gcd-pipelines',
   imports: [
     NzSpinModule,
+    NzButtonModule,
+    NzIconModule,
+    NzTooltipModule,
     ProjectFilterComponent,
+    GroupFilterComponent,
+    PipelineSummaryComponent,
     TopicFilterComponent,
     BranchFilterComponent,
     StatusFilterComponent,
@@ -40,6 +51,7 @@ export class PipelinesComponent implements OnInit {
   groupMap = input.required<Map<GroupId, Set<ProjectId>>>()
 
   filterTextProject = signal('')
+  filterTextGroup = signal('')
   filterTextBranch = signal('')
   filterTopics = signal<string[]>([])
   filterStatuses = signal<Status[]>([])
@@ -47,6 +59,19 @@ export class PipelinesComponent implements OnInit {
 
   projectPipelines = signal<ProjectPipelines[]>([])
   loading = signal(false)
+  refreshing = signal(false)
+
+  statusCounts = computed<ReadonlyMap<Status, number>>(() => {
+    const counts = new Map<Status, number>()
+
+    for (const { pipelines } of this.projectPipelines()) {
+      for (const { status } of pipelines) {
+        counts.set(status, (counts.get(status) ?? 0) + 1)
+      }
+    }
+
+    return counts
+  })
 
   filteredProjectPipelines = computed(() => {
     return this.projectPipelines()
@@ -54,6 +79,7 @@ export class PipelinesComponent implements OnInit {
       .filter(({ pipeline, project }) => {
         return (
           filterProject(project, this.filterTextProject(), this.filterTopics()) &&
+          filterString(projectNamespacePath(project), this.filterTextGroup()) &&
           filterPipeline(pipeline, this.filterTextBranch(), this.filterStatuses())
         )
       })
@@ -73,9 +99,7 @@ export class PipelinesComponent implements OnInit {
   ngOnInit(): void {
     this.loading.set(true)
 
-    forkJoinFlatten(this.groupMap(), this.pipelinesService.getProjectsWithPipelines.bind(this.pipelinesService))
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe((projectPipelines) => this.projectPipelines.set(projectPipelines))
+    this.loadPipelines(false, this.loading)
 
     interval(FETCH_REFRESH_INTERVAL)
       .pipe(
@@ -87,12 +111,22 @@ export class PipelinesComponent implements OnInit {
       .subscribe((projectPipelines) => this.projectPipelines.set(projectPipelines))
   }
 
+  onRefresh(): void {
+    if (!this.refreshing()) {
+      this.loadPipelines(true, this.refreshing)
+    }
+  }
+
   onFilterTopicsChanged(topics: string[]) {
     this.filterTopics.set(topics)
   }
 
   onFilterTextProjectsChanged(filterText: string) {
     this.filterTextProject.set(filterText)
+  }
+
+  onFilterTextGroupsChanged(filterText: string) {
+    this.filterTextGroup.set(filterText)
   }
 
   onFilterTextBranchesChanged(filterText: string) {
@@ -106,6 +140,16 @@ export class PipelinesComponent implements OnInit {
   onPinnedPipelinesChanged(pinnedPipelines: PipelineId[]) {
     this.pinnedPipelines.set(pinnedPipelines)
     this.savePinnedPipelines(pinnedPipelines)
+  }
+
+  private loadPipelines(refresh: boolean, activity: { set(value: boolean): void }): void {
+    activity.set(true)
+    const request = (groupId: GroupId, projectIds?: Set<ProjectId>) =>
+      this.pipelinesService.getProjectsWithPipelines(groupId, projectIds, refresh)
+
+    forkJoinFlatten(this.groupMap(), request)
+      .pipe(finalize(() => activity.set(false)))
+      .subscribe((projectPipelines) => this.projectPipelines.set(projectPipelines))
   }
 
   private savePinnedPipelines(pinnedPipelines: PipelineId[]) {

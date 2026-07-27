@@ -4,7 +4,19 @@
 [![workflow](https://github.com/larscom/gitlab-ci-dashboard/actions/workflows/workflow.yml/badge.svg)](https://github.com/larscom/gitlab-ci-dashboard/actions/workflows/workflow.yml)
 [![License MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![Preview](.github/img/preview.png)
+## Preview
+
+### Pipeline dashboard
+
+![Pipeline dashboard — light theme](.github/img/dashboard-light.png)
+
+![Pipeline dashboard — Dracula theme](.github/img/dashboard-dracula.png)
+
+### Optional login
+
+![Login page — light theme](.github/img/login-light.png)
+
+![Login page — Dracula theme](.github/img/login-dracula.png)
 
 <br />
 
@@ -162,6 +174,10 @@ The dashboard should now be available at: https://example.com/my-custom-path
 | --------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------- |
 | GITLAB_BASE_URL                   | string | The base url to the Gitlab server (e.g: https://gitlab.com)                                                                        | yes      |                |
 | GITLAB_API_TOKEN                  | string | A readonly or read/write access token generated in Gitlab (see: https://gitlab.com/-/profile/personal_access_tokens)               | yes      |                |
+| APP_LOGIN_USERNAME                | string | Dashboard login username. Authentication is enabled when this and `APP_LOGIN_PASSWORD` are set                                     | no       |                |
+| UI_COMPANY_NAME                   | string | Company name displayed at the top of the expandable sidebar                                                                        | no       | Company        |
+| APP_LOGIN_PASSWORD                | string | Dashboard login password. Store this only in the server environment                                                                | no       |                |
+| APP_LOGIN_SECURE_COOKIE           | bool   | Send the login cookie over HTTPS only. Enable this when TLS is configured                                                          | no       | false          |
 | GITLAB_GROUP_ONLY_IDS             | string | Provide a comma seperated string of group ids which will only be displayed (e.g: 123,789,888)                                      | no       |                |
 | GITLAB_GROUP_SKIP_IDS             | string | Provide a comma seperated string of group ids which will be ignored (e.g: 123,789,888)                                             | no       |                |
 | GITLAB_GROUP_ONLY_TOP_LEVEL       | bool   | Show only top level groups, projects in sub groups will be shown inside the top level groups (see: GITLAB_GROUP_INCLUDE_SUBGROUPS) | no       | true           |
@@ -169,7 +185,7 @@ The dashboard should now be available at: https://example.com/my-custom-path
 | GITLAB_GROUP_CACHE_TTL_SECONDS    | int    | Expire after write time in seconds for groups (cache)                                                                              | no       | 300            |
 | GITLAB_PROJECT_SKIP_IDS           | string | Provide a comma seperated string of project ids which will be ignored (e.g: 123,789,888)                                           | no       |                |
 | GITLAB_PROJECT_CACHE_TTL_SECONDS  | int    | Expire after write time in seconds for projects (cache)                                                                            | no       | 300            |
-| GITLAB_PIPELINE_CACHE_TTL_SECONDS | int    | Expire after write time in seconds for pipelines (cache)                                                                           | no       | 5              |
+| GITLAB_PIPELINE_CACHE_TTL_SECONDS | int    | Expire after write time in seconds for pipelines (cache)                                                                           | no       | 30             |
 | GITLAB_PIPELINE_HISTORY_DAYS      | int    | How far back in time (days), it should fetch pipelines from gitlab (pipelines tab only)                                            | no       | 5              |
 | GITLAB_BRANCH_CACHE_TTL_SECONDS   | int    | Expire after write time in seconds for branches (cache)                                                                            | no       | 60             |
 | GITLAB_SCHEDULE_CACHE_TTL_SECONDS | int    | Expire after write time in seconds for schedules (cache)                                                                           | no       | 300            |

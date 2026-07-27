@@ -12,9 +12,13 @@ export class PipelinesService {
   private http = inject(HttpClient)
   private errorService = inject(ErrorService)
 
-  getProjectsWithPipelines(groupId: GroupId, projectIds?: Set<ProjectId>): Observable<ProjectPipelines[]> {
+  getProjectsWithPipelines(
+    groupId: GroupId,
+    projectIds?: Set<ProjectId>,
+    refresh = false
+  ): Observable<ProjectPipelines[]> {
     const url = 'api/projects/pipelines'
-    const params = createParams(groupId, projectIds)
+    const params = { ...createParams(groupId, projectIds), refresh: String(refresh) }
 
     return this.http.get<ProjectPipelines[]>(url, { params }).pipe(
       retry(retryConfig),

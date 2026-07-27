@@ -1,0 +1,23 @@
+<div class="flex items-center">
+  <div class="max-width-275">
+    <nz-input-group [nzSuffix]="suffixIcon">
+      <input
+        type="text"
+        [(ngModel)]="filterText"
+        nz-input
+        [placeholder]="groupCount() > 0 ? 'Search ' + groupCount() + ' groups...' : 'Search groups...'"
+      />
+    </nz-input-group>
+    <ng-template #suffixIcon>
+      <span
+        class="pointer"
+        nz-icon
+        nzType="close-square"
+        nz-tooltip
+        [nzTooltipMouseEnterDelay]="1"
+        nzTooltipTitle="Clear field"
+        (click)="filterText.set('')"
+      ></span>
+    </ng-template>
+  </div>
+</div>

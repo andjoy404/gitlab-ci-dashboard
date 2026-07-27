@@ -1,13 +1,50 @@
-<nz-table #nzTable nzSize="small" tablePaginator="pipelines" [nzData]="projectPipelines()">
+<nz-table
+  #nzTable
+  class="arcane-data-table scrolling-table"
+  nzSize="small"
+  tablePaginator="pipelines"
+  [nzData]="projectPipelines()"
+  [nzWidthConfig]="widthConfig"
+  [style.--table-width]="tableWidth + 'px'"
+  [nzScroll]="{ x: tableWidth + 'px' }"
+>
   <thead>
     <tr>
       @for (header of headers; track header.title) {
-        <th [nzSortFn]="header.compare" [nzShowSort]="header.sortable">
+        <th
+          nz-resizable
+          nzPreview
+          [nzMinWidth]="80"
+          [nzMaxWidth]="800"
+          [nzSortFn]="header.compare"
+          [nzShowSort]="header.sortable"
+          (nzResizeEnd)="onHeaderResize($event, header)"
+        >
           {{ header.title }}
+          <nz-resize-handle nzDirection="right" />
         </th>
       }
-      <th>Jobs</th>
-      <th>Action</th>
+      <th
+        nz-resizable
+        nzPreview
+        [nzMinWidth]="120"
+        [nzMaxWidth]="1200"
+        (nzResizeEnd)="onJobsResize($event)"
+      >
+        Jobs
+        <nz-resize-handle nzDirection="right" />
+      </th>
+      <th
+        nz-resizable
+        nzPreview
+        nzRight
+        [nzMinWidth]="64"
+        [nzMaxWidth]="120"
+        (nzResizeEnd)="onActionResize($event)"
+      >
+        Action
+        <nz-resize-handle nzDirection="left" />
+      </th>
     </tr>
   </thead>
   <tbody>
@@ -17,16 +54,16 @@
         [attr.data-pipeline-id]="data.pipeline?.id"
         [class.blue-bg]="isPinned(data.pipeline?.id)"
       >
-      <td>{{ data.project.name }}</td>
-      <td>{{ data.project.namespace.name }}</td>
-      <td>
+        <td [title]="projectNamespacePath(data.project)">{{ projectNamespacePath(data.project) }}</td>
+        <td>{{ data.project.name }}</td>
+        <td>
           @let ref = data.pipeline?.ref || '';
           @if (isTag(ref)) {
             <nz-tag nzColor="green">
               <span>{{ ref }}</span>
             </nz-tag>
           } @else {
-            <td>{{ ref }}</td>
+            {{ ref }}
           }
         </td>
         <td>{{ data.pipeline?.source || '' }}</td>
@@ -51,35 +88,33 @@
             -
           }
         </td>
-        <td>
+        <td nzRight>
           @if (data.pipeline; as pipeline) {
-            @if (showWriteActions()) {
-              <gcd-write-actions-icon
-                [projectId]="data.project.id"
-                [pipelineId]="pipeline.id"
-                [branch]="data.pipeline.ref"
-              />
-            }
-
-            <gcd-open-gitlab-icon [url]="pipeline.web_url" />
-
-            <gcd-favorites-icon [groupId]="data.group_id" [projectId]="data.project.id" />
-
-            <gcd-download-artifacts-icon [projectId]="data.project.id" [pipelineId]="pipeline.id" />
-
-            <button
-              nz-tooltip
-              [nzTooltipMouseEnterDelay]="0.75"
-              [nzTooltipTitle]="isPinned(pipeline.id) ? 'Unpin pipeline' : 'Pin pipeline'"
-              nz-button
-              (click)="onPinClick($event, pipeline)"
-            >
-              @if (isPinned(pipeline.id)) {
-                <span nz-icon nzType="pushpin" nzTheme="fill" nzTheme="twotone" nzTwotoneColor="#096DD9"></span>
-              } @else {
-                <span nz-icon nzType="pushpin"></span>
+            <gcd-table-actions>
+              @if (showWriteActions()) {
+                <gcd-write-actions-icon
+                  [projectId]="data.project.id"
+                  [pipelineId]="pipeline.id"
+                  [branch]="data.pipeline.ref"
+                />
               }
-            </button>
+              <gcd-open-gitlab-icon [url]="pipeline.web_url" />
+              <gcd-favorites-icon [groupId]="data.group_id" [projectId]="data.project.id" />
+              <gcd-download-artifacts-icon [projectId]="data.project.id" [pipelineId]="pipeline.id" />
+              <button
+                nz-tooltip
+                [nzTooltipMouseEnterDelay]="0.75"
+                [nzTooltipTitle]="isPinned(pipeline.id) ? 'Unpin pipeline' : 'Pin pipeline'"
+                nz-button
+                (click)="onPinClick($event, pipeline)"
+              >
+                @if (isPinned(pipeline.id)) {
+                  <span nz-icon nzType="pushpin" nzTheme="fill" nzTwotoneColor="#096DD9"></span>
+                } @else {
+                  <span nz-icon nzType="pushpin"></span>
+                }
+              </button>
+            </gcd-table-actions>
           } @else {
             -
           }

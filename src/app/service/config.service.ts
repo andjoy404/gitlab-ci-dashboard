@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop'
 
 export interface ApiConfig {
   api_version: string
+  company_name: string
   read_only: boolean
   hide_write_actions: boolean
   page_size_options: number[]
@@ -20,6 +21,7 @@ export class ConfigService {
     return parts.length > 1 ? `${parts[0].slice(0, 7)}@${parts[1]}` : version
   })
 
+  readonly companyName = computed(() => this.config()?.company_name?.trim() || 'Company')
   readonly pageSizeOptions = computed(() => this.config()?.page_size_options ?? [10, 20, 30, 40, 50])
   readonly defaultPageSize = computed(() => this.config()?.default_page_size ?? 10)
   readonly readOnly = computed(() => this.config()?.read_only ?? true)

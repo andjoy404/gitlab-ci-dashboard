@@ -1,7 +1,13 @@
 <div class="flex flex-col gap-1">
+  <gcd-pipeline-summary [statusCounts]="statusCounts()" />
   <div class="flex justify-between">
     <div class="flex flex-col gap-050">
       <div class="flex gap-050">
+        <gcd-group-filter
+          [projects]="projects()"
+          [filterText]="filterTextGroup()"
+          (filterTextChange)="onFilterTextGroupsChanged($event)"
+        />
         <gcd-project-filter
           [projects]="projects()"
           [filterText]="filterTextProject()"
@@ -19,8 +25,23 @@
         [filterTopics]="filterTopics()"
         (filterTopicsChange)="onFilterTopicsChanged($event)"
       />
-      <gcd-status-filter [filterStatuses]="filterStatuses()" (filterStatusesChange)="onFilterStatusesChanged($event)" />
+      <gcd-status-filter
+        [statusCounts]="statusCounts()"
+        [filterStatuses]="filterStatuses()"
+        (filterStatusesChange)="onFilterStatusesChanged($event)"
+      />
     </div>
+    <button
+      class="refresh-button"
+      nz-button
+      nz-tooltip
+      nzTooltipTitle="Fetch the newest pipeline from GitLab"
+      [disabled]="refreshing()"
+      (click)="onRefresh()"
+    >
+      <span nz-icon nzType="reload" [nzSpin]="refreshing()"></span>
+      Refresh
+    </button>
   </div>
   @if (loading()) {
     <nz-spin />

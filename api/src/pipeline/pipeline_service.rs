@@ -22,6 +22,7 @@ impl CacheKey {
 #[derive(Clone)]
 pub struct PipelineService {
     cache_latest: Cache<CacheKey, Option<Pipeline>>,
+    cache_newest: Cache<u64, Vec<Pipeline>>,
     cache_all: Cache<u64, Vec<Pipeline>>,
     client: Arc<dyn GitlabApi>,
     config: AppConfig,
@@ -35,9 +36,13 @@ impl PipelineService {
         let cache_all = Cache::builder()
             .time_to_live(config.ttl_pipeline_cache)
             .build();
+        let cache_newest = Cache::builder()
+            .time_to_live(config.ttl_pipeline_cache)
+            .build();
 
         Self {
             cache_latest,
+            cache_newest,
             cache_all,
             client,
             config,
@@ -111,4 +116,36 @@ impl PipelineService {
             }),
         }
     }
+
+    pub async fn get_newest_pipeline(
+        &self,
+        project_id: u64,
+        refresh: bool,
+    ) -> Result<Vec<Pipeline>, ApiError> {
+        if refresh {
+            self.cache_newest.invalidate(&project_id).await;
+        } else if let Some(pipelines) = self.cache_newest.get(&project_id).await {
+            if !pipelines.iter().any(|pipeline| is_active(&pipeline.status)) {
+                return Ok(pipelines);
+            }
+            self.cache_newest.invalidate(&project_id).await;
+        }
+
+        self.cache_newest
+            .try_get_with(project_id, self.client.newest_pipeline(project_id))
+            .await
+            .map_err(|error| error.as_ref().to_owned())
+    }
+}
+
+fn is_active(status: &crate::model::PipelineStatus) -> bool {
+    matches!(
+        status,
+        crate::model::PipelineStatus::Created
+            | crate::model::PipelineStatus::Pending
+            | crate::model::PipelineStatus::Running
+            | crate::model::PipelineStatus::Canceling
+            | crate::model::PipelineStatus::Preparing
+            | crate::model::PipelineStatus::WaitingForResource
+    )
 }

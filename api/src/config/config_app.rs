@@ -5,6 +5,7 @@ use std::{fmt::Display, num::NonZeroUsize, str::FromStr, thread, time::Duration}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApiConfig {
     pub api_version: String,
+    pub company_name: String,
     pub read_only: bool,
     pub hide_write_actions: bool,
     pub page_size_options: Vec<usize>,
@@ -15,6 +16,7 @@ impl ApiConfig {
     pub fn new() -> Self {
         Self {
             api_version: from_env_or_default("VERSION", "dev".into()),
+            company_name: from_env_or_default("UI_COMPANY_NAME", "Company".into()),
             read_only: from_env_or_default("API_READ_ONLY", true),
             hide_write_actions: from_env_or_default("UI_HIDE_WRITE_ACTIONS", false),
             page_size_options: split_into(from_env_or_default(
@@ -108,7 +110,7 @@ impl AppConfig {
             )),
             ttl_pipeline_cache: Duration::from_secs(from_env_or_default(
                 "GITLAB_PIPELINE_CACHE_TTL_SECONDS",
-                5,
+                30,
             )),
             ttl_schedule_cache: Duration::from_secs(from_env_or_default(
                 "GITLAB_SCHEDULE_CACHE_TTL_SECONDS",
@@ -271,6 +273,7 @@ mod tests {
         let config = ApiConfig::new();
 
         assert_eq!(config.api_version, "1.0.0");
+        assert_eq!(config.company_name, "Appfuxion");
         assert!(!config.read_only);
         assert!(config.hide_write_actions);
         assert_eq!(config.page_size_options, vec![10, 20]);
@@ -285,6 +288,7 @@ mod tests {
         let config = ApiConfig::new();
 
         assert_eq!(config.api_version, "dev");
+        assert_eq!(config.company_name, "Company");
         assert!(config.read_only);
         assert!(!config.hide_write_actions);
         assert_eq!(config.page_size_options, vec![10, 20, 30, 40, 50]);
@@ -406,6 +410,7 @@ mod tests {
 
         // api config
         env::set_var("VERSION", "1.0.0");
+        env::set_var("UI_COMPANY_NAME", "Appfuxion");
         env::set_var("API_READ_ONLY", "false");
         env::set_var("UI_HIDE_WRITE_ACTIONS", "true");
         env::set_var("UI_PAGE_SIZE_OPTIONS", String::from("10,20"));

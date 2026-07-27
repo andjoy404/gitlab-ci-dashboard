@@ -1,14 +1,35 @@
 <header class="header">
-  <div class="flex gap-050 items-center">
-    <span class="font-md font-white" nz-icon nzType="laptop"></span>
-    <h4 class="title font-white">Gitlab CI Dashboard</h4>
-  </div>
-  <div class="flex gap-050 items-center">
-    <div>
-      <span class="font-sm">{{ version() }}</span>
+  <strong class="dashboard-name">Gitlab CI Dashboard</strong>
+  @if (auth.authenticated()) {
+    <div class="header-actions">
+      <button
+        nzType="text"
+        nz-button
+        nz-tooltip
+        [nzTooltipTitle]="theme.isDracula() ? 'Use light theme' : 'Use Dracula theme'"
+        (click)="theme.toggle()"
+      >
+        <span class="theme-icon" aria-hidden="true">{{ theme.isDracula() ? '☀' : '☾' }}</span>
+        <span class="action-label">{{ theme.isDracula() ? 'Light' : 'Dracula' }}</span>
+      </button>
+      <button nzType="text" nz-button nz-tooltip nzTooltipTitle="Favorites" (click)="favorites.toggle()">
+        <span nz-icon nzType="star" nzTheme="fill" nzTwotoneColor="#FFD700"></span>
+        <span class="action-label">Favorites</span>
+      </button>
+      @if (auth.enabled()) {
+        <button nzType="text" nz-button nz-tooltip nzTooltipTitle="Sign out" (click)="auth.logout()">
+          <span nz-icon nzType="logout"></span>
+          <span class="action-label">Sign out</span>
+        </button>
+      }
+      <span class="header-divider"></span>
+      <button nzType="text" nz-button nz-tooltip nzTooltipTitle="View on GitHub" (click)="onClick()">
+        <span class="font-md font-white" nz-icon nzType="github"></span>
+      </button>
     </div>
+  } @else {
     <button nzType="text" nz-button nz-tooltip nzTooltipTitle="View on GitHub" (click)="onClick()">
       <span class="font-md font-white" nz-icon nzType="github"></span>
     </button>
-  </div>
+  }
 </header>

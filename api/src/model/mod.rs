@@ -1,4 +1,5 @@
 pub use branch::*;
+pub use bridge::*;
 pub use group::*;
 pub use job::*;
 pub use pipeline::*;
@@ -9,6 +10,7 @@ pub mod pipeline;
 pub mod project;
 
 pub mod branch;
+pub mod bridge;
 pub mod commit;
 pub mod group;
 pub mod job;
@@ -101,6 +103,7 @@ pub mod test {
             id: 456,
             jobs_enabled: true,
             name: "name".to_string(),
+            path: None,
             web_url: "web_url".to_string(),
             default_branch: Some("default_branch".to_string()),
             topics: vec!["topic".to_string()],
@@ -108,6 +111,7 @@ pub mod test {
                 id: 123,
                 name: "namespace".to_string(),
                 path: "namespace".to_string(),
+                full_path: None,
             },
         }
     }

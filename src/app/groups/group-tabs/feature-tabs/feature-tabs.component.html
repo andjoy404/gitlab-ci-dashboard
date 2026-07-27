@@ -1,6 +1,9 @@
 <nz-tabs
+  class="arcane-tabs"
   [nzDestroyInactiveTabPane]="true"
   [nzSelectedIndex]="selectedIndex$ | async"
+  [nzTabBarExtraContent]="menuToggle"
+  [class.menu-collapsed]="menuCollapsed()"
   (nzSelectChange)="onChange($event)"
   nzTabPosition="left"
   nzSize="small"
@@ -9,7 +12,16 @@
   @for (tab of tabs; track tab.id) {
     <nz-tab [nzTitle]="title">
       <ng-template #title>
-        <span nz-icon [nzType]="tab.icon"></span><span class="pointer">{{ tab.title }}</span>
+        <span
+          nz-icon
+          nz-tooltip
+          [nzType]="tab.icon"
+          [nzTooltipTitle]="menuCollapsed() ? tab.title : null"
+          nzTooltipPlacement="right"
+        ></span>
+        @if (!menuCollapsed()) {
+          <span class="pointer">{{ tab.title }}</span>
+        }
       </ng-template>
       <ng-template nz-tab>
         <div class="tab-content">
@@ -29,3 +41,42 @@
     </nz-tab>
   }
 </nz-tabs>
+
+<ng-template #menuToggle>
+  <div class="sidebar-identity">
+    <div class="brand-row">
+      <div class="brand">
+        <span class="brand-icon" nz-icon nzType="laptop"></span>
+        @if (!menuCollapsed()) {
+          <strong>{{ companyName() }}</strong>
+        }
+      </div>
+      <button
+        class="menu-pin"
+        nz-button
+        nzType="text"
+        nz-tooltip
+        [nzTooltipTitle]="menuCollapsed() ? 'Pin menu open' : 'Unpin menu'"
+        [attr.aria-label]="menuCollapsed() ? 'Pin menu open' : 'Unpin menu'"
+        [attr.aria-pressed]="!menuCollapsed()"
+        (click)="toggleMenu()"
+      >
+        <span nz-icon nzType="pushpin" [nzTheme]="menuCollapsed() ? 'outline' : 'fill'"></span>
+      </button>
+    </div>
+    <div
+      class="group-identity"
+      nz-tooltip
+      [nzTooltipTitle]="menuCollapsed() ? groupName() : null"
+      nzTooltipPlacement="right"
+    >
+      <span class="group-icon" nz-icon nzType="cluster"></span>
+      @if (!menuCollapsed()) {
+        <div class="group-copy">
+          <strong>{{ groupName() }}</strong>
+          <small>GitLab group</small>
+        </div>
+      }
+    </div>
+  </div>
+</ng-template>

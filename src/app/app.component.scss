@@ -11,3 +11,9 @@
   max-width: 500px;
   padding: 1rem;
 }
+
+.auth-loading {
+  display: grid;
+  min-height: calc(100vh - 3.75rem);
+  place-items: center;
+}

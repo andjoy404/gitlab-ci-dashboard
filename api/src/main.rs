@@ -14,6 +14,7 @@ use std::sync::Arc;
 use web::scope;
 
 mod artifact;
+mod auth;
 mod branch;
 mod config;
 mod error;
@@ -53,6 +54,7 @@ async fn main() -> std::io::Result<()> {
     log::debug!("{api_config:?}");
 
     let api_config = Data::new(api_config);
+    let auth_state = Data::new(auth::AuthState::from_env());
     let qs_config = QueryStringConfig::default().parse_mode(ParseMode::Delimiter(b','));
 
     let gitlab_client = Arc::new(GitlabClient::new(
@@ -110,6 +112,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(prom.clone())
             .configure(configure_app(
                 api_config.clone(),
+                auth_state.clone(),
                 qs_config.clone(),
                 group_service.clone(),
                 project_aggr.clone(),
@@ -130,6 +133,7 @@ async fn main() -> std::io::Result<()> {
 #[allow(clippy::too_many_arguments)]
 fn configure_app(
     api_config: Data<ApiConfig>,
+    auth_state: Data<auth::AuthState>,
     qs_config: QueryStringConfig,
     group_service: Data<group::GroupService>,
     project_aggr: Data<project::PipelineAggregator>,
@@ -143,6 +147,7 @@ fn configure_app(
     move |config| {
         config
             .app_data(api_config)
+            .app_data(auth_state)
             .app_data(qs_config)
             .app_data(group_service)
             .app_data(project_aggr)
@@ -153,8 +158,33 @@ fn configure_app(
             .app_data(branch_service)
             .app_data(artifact_service)
             .route("/health", web::get().to(health_handler))
+            .service(scope("/api/auth").configure(auth::setup_handlers))
             .service(
                 scope("/api")
+                    .wrap_fn(|request, service| {
+                        use actix_service::Service;
+                        use futures::future::{ready, Either};
+                        use futures::FutureExt;
+
+                        let authenticated = request
+                            .app_data::<Data<auth::AuthState>>()
+                            .map(|auth| auth.is_authenticated(request.request()))
+                            .unwrap_or(false);
+
+                        if authenticated {
+                            Either::Left(
+                                service
+                                    .call(request)
+                                    .map(|response| response.map(|response| response.map_into_left_body())),
+                            )
+                        } else {
+                            let response = HttpResponse::Unauthorized()
+                                .json(serde_json::json!({ "message": "Authentication required" }));
+                            Either::Right(ready(Ok(
+                                request.into_response(response).map_into_right_body()
+                            )))
+                        }
+                    })
                     .configure(config::setup_handlers)
                     .configure(group::setup_handlers)
                     .configure(project::setup_handlers)
@@ -202,7 +232,7 @@ mod tests {
     use crate::error::ApiError;
     use crate::gitlab::GitlabApi;
     use crate::model::{
-        Branch, BranchPipeline, Group, Job, JobStatus, Pipeline, Project, ProjectPipeline,
+        Branch, BranchPipeline, Bridge, Group, Job, JobStatus, Pipeline, Project, ProjectPipeline,
         ProjectPipelines, Schedule, ScheduleProjectPipeline,
     };
 
@@ -224,6 +254,7 @@ mod tests {
             let gitlab_client = Arc::new(GitlabClientTest {});
 
             let api_config = Data::new(ApiConfig::new());
+            let auth_state = Data::new(auth::AuthState::from_env());
 
             let group_service = Data::new(group::GroupService::new(
                 gitlab_client.clone(),
@@ -269,6 +300,7 @@ mod tests {
 
             test::init_service(App::new().configure(configure_app(
                 api_config,
+                auth_state,
                 qs_config,
                 group_service,
                 project_aggr,
@@ -359,6 +391,15 @@ mod tests {
             _scope: &[JobStatus],
         ) -> Result<Vec<Job>, ApiError> {
             Ok(vec![model::test::new_job()])
+        }
+
+        async fn bridges(
+            &self,
+            _project_id: u64,
+            _pipeline_id: u64,
+            _scope: &[JobStatus],
+        ) -> Result<Vec<Bridge>, ApiError> {
+            Ok(Vec::new())
         }
 
         async fn artifact(&self, _project_id: u64, _job_id: u64) -> Result<Bytes, ApiError> {
