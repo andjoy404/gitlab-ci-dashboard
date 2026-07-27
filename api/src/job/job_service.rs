@@ -90,9 +90,35 @@ impl JobService {
             }
         }
 
-        jobs.sort_unstable_by(|a, b| a.created_at.cmp(&b.created_at));
+        jobs.sort_by(|a, b| {
+            job_display_priority(a)
+                .cmp(&job_display_priority(b))
+                .then_with(|| a.created_at.cmp(&b.created_at))
+                .then_with(|| a.id.cmp(&b.id))
+        });
         Ok(jobs)
     }
+}
+
+fn job_display_priority(job: &Job) -> u8 {
+    let stage = job.stage.to_ascii_lowercase();
+    let name = job.name.to_ascii_lowercase();
+
+    if stage.contains("cleanup")
+        || stage.contains("clean-up")
+        || stage.contains("teardown")
+        || name.contains("cleanup")
+        || name.contains("clean-up")
+        || name.contains("teardown")
+    {
+        return 2;
+    }
+
+    if stage.contains("deploy") || name.contains("deploy") {
+        return 1;
+    }
+
+    0
 }
 
 fn is_active(status: &JobStatus) -> bool {
