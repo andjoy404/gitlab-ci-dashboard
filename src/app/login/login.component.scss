@@ -77,28 +77,34 @@ button {
 
 :host-context(.dracula-theme) {
   .login-page {
-    background: linear-gradient(145deg, #30323f, #3b3850);
+    background:
+      radial-gradient(circle at 50% 35%, rgb(124 58 237 / 8%), transparent 32rem),
+      #080a0b;
   }
 
   .login-card {
-    color: #f8f8f2;
-    border-color: #5c6075;
-    background: #3b3e4e;
-    box-shadow: 0 16px 45px rgb(20 21 28 / 35%);
+    color: #f4f4f5;
+    border-color: #292d30;
+    background: #0d1011;
+    box-shadow: 0 16px 45px rgb(0 0 0 / 45%);
   }
 
   p,
   label {
-    color: #c9cbd6;
+    color: #a1a1aa;
+  }
+
+  h1 {
+    color: #f4f4f5;
   }
 
   .login-theme-toggle {
-    color: #d7d8e2;
+    color: #b4b8bc;
   }
 
   .login-theme-toggle:hover,
   .login-theme-toggle:focus {
-    color: #f8f8f2;
-    background: #4a4d60;
+    color: #f4f4f5;
+    background: #181c1e;
   }
 }

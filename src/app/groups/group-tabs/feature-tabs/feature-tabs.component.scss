@@ -127,36 +127,36 @@
 }
 
 :host-context(.dracula-theme) ::ng-deep .arcane-tabs > .ant-tabs-nav {
-  border-color: #4f5366;
-  background: #292c38;
-  box-shadow: 0 8px 24px rgb(18 19 26 / 18%);
+  border-color: #292d30;
+  background: #090b0c;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
 }
 
 :host-context(.dracula-theme) ::ng-deep .arcane-tabs > .ant-tabs-nav .ant-tabs-tab {
-  color: #b8bac8;
+  color: #92989f;
 }
 
 :host-context(.dracula-theme) ::ng-deep .arcane-tabs > .ant-tabs-nav .ant-tabs-tab:hover {
-  color: #f8f8f2;
-  background: #383b4a !important;
+  color: #f4f4f5;
+  background: #15191b !important;
 }
 
 :host-context(.dracula-theme) ::ng-deep .arcane-tabs > .ant-tabs-nav .ant-tabs-tab-active {
-  color: #d8c2ff !important;
-  background: #45405b !important;
-  box-shadow: inset 3px 0 #bd93f9;
+  color: #c4a7ff !important;
+  background: #1a1326 !important;
+  box-shadow: inset 3px 0 #9b5cff;
 }
 
 :host-context(.dracula-theme) ::ng-deep .arcane-tabs > .ant-tabs-nav .ant-tabs-extra-content {
-  border-bottom-color: #4f5366;
+  border-bottom-color: #292d30;
 }
 
 :host-context(.dracula-theme) .menu-pin {
-  color: #bd93f9;
+  color: #a970ff;
 }
 
 :host-context(.dracula-theme) .menu-pin:hover,
 :host-context(.dracula-theme) .menu-pin:focus {
-  color: #d8c2ff;
-  background: #45405b;
+  color: #d2baff;
+  background: #1a1326;
 }
