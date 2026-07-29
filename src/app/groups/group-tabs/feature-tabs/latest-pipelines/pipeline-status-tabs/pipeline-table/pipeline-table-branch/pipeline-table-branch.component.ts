@@ -14,7 +14,6 @@ import { Header } from '$groups/util/table'
 import { ConfigService } from '$service/config.service'
 import { CommonModule } from '@angular/common'
 import { ChangeDetectionStrategy, Component, computed, inject, input, Signal, signal } from '@angular/core'
-import { NzBadgeModule } from 'ng-zorro-antd/badge'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzI18nService } from 'ng-zorro-antd/i18n'
 import { NzIconModule } from 'ng-zorro-antd/icon'
@@ -59,7 +58,6 @@ const headers: Header<BranchPipeline>[] = [
     NzTooltipModule,
     NzButtonModule,
     NzIconModule,
-    NzBadgeModule,
     WriteActionsIconComponent,
     OpenGitlabIconComponent,
     DownloadArtifactsIconComponent,

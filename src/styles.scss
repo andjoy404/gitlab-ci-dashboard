@@ -554,6 +554,130 @@ html.dracula-theme .ant-table-wrapper .ant-table-thead > tr > th {
 .ant-spin-dot-item {
   background-color: var(--dashboard-accent);
 }
+
+/* Theme-safe, colorful values shared by all pipeline tables. */
+.pipeline-ref,
+.pipeline-trigger,
+.pipeline-topic {
+  display: inline-flex;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.pipeline-ref {
+  color: #6d28d9;
+  border-color: rgb(109 40 217 / 35%);
+  background: rgb(109 40 217 / 8%);
+}
+
+.pipeline-trigger {
+  color: #0369a1;
+  border-color: rgb(3 105 161 / 35%);
+  background: rgb(3 105 161 / 8%);
+}
+
+.pipeline-topic {
+  color: #b45309;
+  border-color: rgb(180 83 9 / 35%);
+  background: rgb(180 83 9 / 8%);
+}
+
+.pipeline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.pipeline-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 65%);
+}
+
+.pipeline-status.status-success {
+  color: #047857;
+}
+
+.pipeline-status.status-running,
+.pipeline-status.status-pending,
+.pipeline-status.status-preparing,
+.pipeline-status.status-created {
+  color: #1d4ed8;
+}
+
+.pipeline-status.status-manual,
+.pipeline-status.status-skipped {
+  color: #b45309;
+}
+
+.pipeline-status.status-scheduled {
+  color: #7c3aed;
+}
+
+.pipeline-status.status-failed,
+.pipeline-status.status-canceled {
+  color: #dc2626;
+}
+
+.dracula-theme {
+  .pipeline-ref {
+    color: #d8b4fe;
+    border-color: #6b21a8;
+    background: #2e1065;
+  }
+
+  .pipeline-trigger {
+    color: #67e8f9;
+    border-color: #155e75;
+    background: #083344;
+  }
+
+  .pipeline-topic {
+    color: #fcd34d;
+    border-color: #92400e;
+    background: #451a03;
+  }
+
+  .pipeline-status {
+    color: #d1d5db;
+  }
+
+  .pipeline-status-dot {
+    box-shadow: 0 0 0 2px rgb(8 10 11 / 80%);
+  }
+
+  .pipeline-status.status-success {
+    color: #4ade80;
+  }
+
+  .pipeline-status.status-running,
+  .pipeline-status.status-pending,
+  .pipeline-status.status-preparing,
+  .pipeline-status.status-created {
+    color: #60a5fa;
+  }
+
+  .pipeline-status.status-manual,
+  .pipeline-status.status-skipped {
+    color: #fbbf24;
+  }
+
+  .pipeline-status.status-scheduled {
+    color: #c4a7ff;
+  }
+
+  .pipeline-status.status-failed,
+  .pipeline-status.status-canceled {
+    color: #fb7185;
+  }
+}
 /* Arcane-style sidebar identity */
 .sidebar-identity {
   width: 100%;

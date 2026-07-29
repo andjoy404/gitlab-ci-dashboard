@@ -29,12 +29,16 @@
     >
       <td [title]="projectNamespacePath(data.project)">{{ projectNamespacePath(data.project) }}</td>
       <td>{{ data.project.name }}</td>
-      <td>{{ data.project.default_branch }}</td>
-      <td class="lowercase">{{ data.project.topics.length ? data.project.topics.join(',') : '-' }}</td>
+      <td><span class="pipeline-ref">{{ data.project.default_branch }}</span></td>
+      <td class="lowercase">
+        @if (data.project.topics.length) {
+          <span class="pipeline-topic">{{ data.project.topics.join(', ') }}</span>
+        } @else { - }
+      </td>
       <td [style.color]="data.pipeline?.coverage | coverageColor">
         {{ data.pipeline?.coverage ? data.pipeline?.coverage + '%' : '-' }}
       </td>
-      <td>{{ data.pipeline?.source || '-' }}</td>
+      <td><span class="pipeline-trigger">{{ data.pipeline?.source || '-' }}</span></td>
       <td>
         @if (data.pipeline; as pipeline) {
         {{ pipeline.updated_at | date : 'medium' : timeZone : locale }}
