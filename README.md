@@ -20,7 +20,7 @@
 
 <br />
 
-Gitlab CI Dashboard will provide you with a **global** overview of all pipelines, schedules, and their statuses within a
+Gitlab CI Dashboard will provide you with a **global** overview of pipelines, runners, and their statuses within a
 single group.
 The default functionality of Gitlab is limited at the project level. This can become hard to manage when you have a lot
 of
@@ -33,7 +33,7 @@ projects, potentially resulting in undetected failed pipelines.
 ## 🚀 Highlights
 
 - View all pipeline statuses per group (e.g: failed/canceled/success)
-- View all pipeline schedules per group
+- View group runners, availability, execution state, and currently running jobs
 - You won't get rate limited by the Gitlab API, due to server-side caching
 - Communication to the Gitlab API happens only server side
 - Only 1 `read only` token is needed to serve a whole team
@@ -44,7 +44,7 @@ projects, potentially resulting in undetected failed pipelines.
 
 - [x] Overview of all latest pipeline statuses within a group
 - [x] Overview of all pipeline statuses within a group
-- [x] Overview of all schedules within a group
+- [x] Read-only overview of group runners and their active jobs
 - [x] Navigate to Gitlab
 - [x] Shows jobs and their status per pipeline
 - [x] Download artifacts from jobs directly
@@ -66,12 +66,18 @@ projects, potentially resulting in undetected failed pipelines.
 
 - Gitlab server (v4 API)
 - API token (read only or read/write)
+- To use the Runners page, the token must include runner read access (`manage_runner` on GitLab versions that require
+  it), and its user must have an Owner, Auditor, or suitable custom runner-management role in the group. Active job
+  details are shown only for projects the token user can access.
 - Docker
 
 ## 💡 Getting started
 
 1. Generate a `read_api` or `api` access token in Gitlab, depending on your requirements (
    e.g: https://gitlab.com/-/profile/personal_access_tokens)
+
+   The read-only Runners page requires the `manage_runner` token scope and suitable group access (Owner, Auditor, or a
+   custom role with `admin_runners`). Active jobs are shown only for projects the token user can access.
 
 ![Access Token](.github/img/access_token.png)
 
@@ -96,6 +102,13 @@ docker run \
 
 3. Dashboard should be available at: http://localhost:8080/ showing (by default) all available groups and their
    projects
+
+### Runner monitoring permissions
+
+The read-only Runners page uses GitLab's group runners and runner jobs endpoints. The token user must be an Owner or
+Auditor of the group, or have a custom role with `admin_runners`. The token must also be allowed to read runner
+information (GitLab documents the `manage_runner` scope for these endpoints). Active job details are limited to projects
+the token user can access.
 
 ## 👉 Create/Cancel/Retry Pipelines
 
@@ -189,6 +202,9 @@ The dashboard should now be available at: https://example.com/my-custom-path
 | GITLAB_PIPELINE_HISTORY_DAYS      | int    | How far back in time (days), it should fetch pipelines from gitlab (pipelines tab only)                                            | no       | 5              |
 | GITLAB_BRANCH_CACHE_TTL_SECONDS   | int    | Expire after write time in seconds for branches (cache)                                                                            | no       | 60             |
 | GITLAB_SCHEDULE_CACHE_TTL_SECONDS | int    | Expire after write time in seconds for schedules (cache)                                                                           | no       | 300            |
+| GITLAB_RUNNER_CACHE_TTL_SECONDS   | int    | Expire after write time in seconds for the group runner list                                                                        | no       | 60             |
+| GITLAB_RUNNER_DETAIL_CACHE_TTL_SECONDS | int | Expire after write time in seconds for self-hosted runner metadata such as tags                                                   | no       | 300            |
+| GITLAB_RUNNER_JOB_CACHE_TTL_SECONDS | int  | Expire after write time in seconds for active jobs handled by runners                                                               | no       | 15             |
 | GITLAB_JOB_CACHE_TTL_SECONDS      | int    | Expire after write time in seconds for jobs (cache)                                                                                | no       | 5              |
 | GITLAB_ARTIFACT_CACHE_TTL_SECONDS | int    | Expire after write time in seconds for artifacts (cache)                                                                           | no       | 1800           |
 | API_READ_ONLY                     | bool   | If true, you are not able to perform 'write' operations like retrying a pipeline                                                   | no       | true           |

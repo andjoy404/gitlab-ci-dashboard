@@ -1,0 +1,72 @@
+<div class="runner-page">
+  <section class="runner-summary">
+    <div>
+      <span>Total runners</span>
+      <strong>{{ runners().length }}</strong>
+      <small>self-hosted runners in the selected group</small>
+    </div>
+    <div class="runner-overview">
+      <div class="runner-distribution" aria-label="Runner status distribution">
+        @for (entry of statusCounts() | keyvalue; track entry.key) {
+          <span [class]="'status-segment status-' + entry.key" [style.flex-grow]="entry.value"></span>
+        }
+      </div>
+      <div class="runner-counts">
+        @for (entry of statusCounts() | keyvalue; track entry.key) {
+          <span [class]="'status-label status-' + entry.key">
+            <i [class]="'status-dot status-' + entry.key"></i>{{ entry.key }} {{ entry.value }}
+          </span>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="runner-toolbar">
+    <div class="runner-searches">
+      <input
+        nz-input
+        type="search"
+        placeholder="Search groups or projects..."
+        [value]="filterTextGroup()"
+        (input)="onFilterTextGroupChanged($any($event.target).value)"
+      />
+      <input
+        nz-input
+        type="search"
+        placeholder="Search runners, IPs, or jobs..."
+        [value]="filterTextRunner()"
+        (input)="onFilterTextRunnerChanged($any($event.target).value)"
+      />
+      <input
+        nz-input
+        type="search"
+        placeholder="Search tags..."
+        [value]="filterTextTag()"
+        (input)="onFilterTextTagChanged($any($event.target).value)"
+      />
+    </div>
+    <button nz-button [nzLoading]="refreshing()" (click)="refresh()">
+      <span nz-icon nzType="reload"></span>
+      Refresh
+    </button>
+  </div>
+
+  <div class="runner-status-filter">
+    <strong>Filter by status</strong>
+    @for (entry of statusCounts() | keyvalue; track entry.key) {
+      <button
+        type="button"
+        [ngClass]="['status-chip', 'status-' + entry.key, statusSelected(entry.key) ? 'active' : '']"
+        (click)="toggleStatus(entry.key)"
+      >
+        {{ entry.key }}: {{ entry.value }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <nz-spin />
+  } @else {
+    <gcd-runner-table [runners]="filteredRunners()" />
+  }
+</div>

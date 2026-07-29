@@ -1,6 +1,6 @@
 .header {
   padding: 0.55rem 1rem;
-  color: white;
+  color: var(--dashboard-text);
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -8,12 +8,13 @@
   height: 4rem;
   max-height: 4rem;
   min-width: 768px;
-  background-color: #0a0c0d;
-  border-bottom: 1px solid #292d30;
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--dashboard-border);
+  box-shadow: 0 1px 5px rgb(15 23 42 / 8%);
 }
 
 button {
-  color: #f8f8f2;
+  color: var(--dashboard-text);
   border-radius: 7px;
 }
 
@@ -48,14 +49,14 @@ button {
 }
 
 .dashboard-copy strong {
-  color: #f8f8f2;
+  color: var(--dashboard-text);
   font-size: 17px;
   letter-spacing: -0.01em;
 }
 
 .dashboard-copy small {
   margin-top: 0.2rem;
-  color: #bfc2d0;
+  color: var(--dashboard-muted);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.045em;
@@ -76,8 +77,8 @@ button {
 
 .header-actions button:hover,
 .header-actions button:focus {
-  color: #fff;
-  background: #181c1e;
+  color: var(--dashboard-accent);
+  background: var(--dashboard-surface-hover);
 }
 
 .theme-icon {
@@ -90,7 +91,39 @@ button {
   width: 1px;
   height: 22px;
   margin: 0 0.35rem;
-  background: #303538;
+  background: var(--dashboard-border);
+}
+
+.header .font-white {
+  color: var(--dashboard-text);
+}
+
+:host-context(.dracula-theme) {
+  .header {
+    color: #f4f4f5;
+    background-color: #0a0c0d;
+    border-color: #292d30;
+  }
+
+  button,
+  .dashboard-copy strong,
+  .header .font-white {
+    color: #f8f8f2;
+  }
+
+  .dashboard-copy small {
+    color: #bfc2d0;
+  }
+
+  .header-actions button:hover,
+  .header-actions button:focus {
+    color: #fff;
+    background: #181c1e;
+  }
+
+  .header-divider {
+    background: #303538;
+  }
 }
 
 @media (max-width: 900px) {

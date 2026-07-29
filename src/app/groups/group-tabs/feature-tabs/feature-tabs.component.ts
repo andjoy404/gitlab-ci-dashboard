@@ -1,6 +1,6 @@
 import { filterNotNull } from '$groups/util/filter'
 import { CommonModule } from '@angular/common'
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import { ActivatedRoute, Router } from '@angular/router'
 import { NzIconModule } from 'ng-zorro-antd/icon'
@@ -10,13 +10,14 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip'
 import { map } from 'rxjs'
 import { LatestPipelinesComponent } from './latest-pipelines/latest-pipelines.component'
 import { PipelinesComponent } from './pipelines/pipelines.component'
-import { SchedulesComponent } from './schedules/schedules.component'
+import { RunnersComponent } from './runners/runners.component'
 import { GroupId } from '$groups/model/group'
 import { ProjectId } from '$groups/model/project'
 import { ConfigService } from '$service/config.service'
+import { DashboardFeature, DashboardPreloadService } from './service/dashboard-preload.service'
 
 interface Tab {
-  id: 'latest-pipelines' | 'pipelines' | 'schedules'
+  id: 'latest-pipelines' | 'pipelines' | 'runners'
   title: string
   icon: string
 }
@@ -33,9 +34,9 @@ const tabs: Tab[] = [
     icon: 'unordered-list'
   },
   {
-    id: 'schedules',
-    title: 'Schedules',
-    icon: 'schedule'
+    id: 'runners',
+    title: 'Runners',
+    icon: 'thunderbolt'
   }
 ]
 
@@ -49,14 +50,15 @@ const tabs: Tab[] = [
     NzTooltipModule,
     LatestPipelinesComponent,
     PipelinesComponent,
-    SchedulesComponent
+    RunnersComponent
   ],
   templateUrl: './feature-tabs.component.html',
   styleUrls: ['./feature-tabs.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FeatureTabsComponent {
+export class FeatureTabsComponent implements OnInit {
   private config = inject(ConfigService)
+  private preloader = inject(DashboardPreloadService)
 
   groupMap = input.required<Map<GroupId, Set<ProjectId>>>()
   groupName = input('Group')
@@ -86,6 +88,12 @@ export class FeatureTabsComponent {
           this.onChange({ index: 0, tab: null })
         }
       })
+  }
+
+  ngOnInit(): void {
+    const featureId = this.route.snapshot.paramMap.get('featureId') as DashboardFeature | null
+    const activeFeature = this.tabs.some(({ id }) => id === featureId) ? featureId! : 'latest-pipelines'
+    this.preloader.preload(this.groupMap(), activeFeature)
   }
 
   onChange({ index }: NzTabChangeEvent): void {

@@ -1,7 +1,7 @@
 use crate::error::ApiError;
 use crate::model::Project;
 use crate::model::Schedule;
-use crate::model::{Branch, Bridge, Group, Job};
+use crate::model::{Branch, Bridge, Group, Job, Runner, RunnerJob, RunnerManager};
 use crate::model::{JobStatus, Pipeline};
 use actix_web::web::Bytes;
 use async_trait::async_trait;
@@ -62,6 +62,14 @@ pub trait GitlabApi: Send + Sync {
     async fn branches(&self, project_id: u64) -> Result<Vec<Branch>, ApiError>;
 
     async fn schedules(&self, project_id: u64) -> Result<Vec<Schedule>, ApiError>;
+
+    async fn runners(&self, group_id: u64) -> Result<Vec<Runner>, ApiError>;
+
+    async fn runner_details(&self, runner_id: u64) -> Result<Runner, ApiError>;
+
+    async fn runner_managers(&self, runner_id: u64) -> Result<Vec<RunnerManager>, ApiError>;
+
+    async fn runner_jobs(&self, runner_id: u64) -> Result<Vec<RunnerJob>, ApiError>;
 
     async fn jobs(
         &self,
@@ -462,6 +470,67 @@ impl GitlabApi for GitlabClient {
         let params = [];
         let path = format!("/projects/{project_id}/pipeline_schedules");
         self.get_all_pages(path, params.to_vec()).await
+    }
+
+    async fn runners(&self, group_id: u64) -> Result<Vec<Runner>, ApiError> {
+        let root = self
+            .do_get_parsed::<Group>(format!("/groups/{group_id}"), Vec::new())
+            .await?;
+        let mut groups = vec![root];
+        let descendants = self
+            .get_all_pages::<Group>(
+                format!("/groups/{group_id}/descendant_groups"),
+                Vec::new(),
+            )
+            .await?;
+        groups.extend(descendants);
+
+        // Each group endpoint includes runners inherited from its ancestors. Visit the
+        // root first and keep the first occurrence so the recorded scope is the runner's
+        // closest owning group rather than a descendant where it is merely available.
+        let mut runners_by_id = HashMap::new();
+        for group in groups {
+            let mut runners = self
+                .get_all_pages::<Runner>(
+                    format!("/groups/{}/runners", group.id),
+                    Vec::new(),
+                )
+                .await?;
+            let scope_name = if group.full_path.is_empty() {
+                group.name
+            } else {
+                group.full_path
+            };
+            for mut runner in runners.drain(..) {
+                runner.scope_name = scope_name.clone();
+                runners_by_id.entry(runner.id).or_insert(runner);
+            }
+        }
+
+        Ok(runners_by_id.into_values().collect())
+    }
+
+    async fn runner_details(&self, runner_id: u64) -> Result<Runner, ApiError> {
+        self.do_get_parsed(format!("/runners/{runner_id}"), Vec::new())
+            .await
+    }
+
+    async fn runner_managers(&self, runner_id: u64) -> Result<Vec<RunnerManager>, ApiError> {
+        self.get_all_pages(format!("/runners/{runner_id}/managers"), Vec::new())
+            .await
+    }
+
+    async fn runner_jobs(&self, runner_id: u64) -> Result<Vec<RunnerJob>, ApiError> {
+        let params = vec![
+            ("status".to_string(), "running".to_string()),
+            ("order_by".to_string(), "id".to_string()),
+            ("sort".to_string(), "desc".to_string()),
+        ];
+        let path = format!("/runners/{runner_id}/jobs");
+
+        // A runner normally handles only a small number of concurrent jobs.
+        // Reading the first 100 running jobs avoids unnecessary pagination.
+        Ok(self.get_page(path, 1, params).await?.data)
     }
 
     async fn jobs(

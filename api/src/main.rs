@@ -24,6 +24,7 @@ mod job;
 mod model;
 mod pipeline;
 mod project;
+mod runner;
 mod schedule;
 mod spa;
 mod util;
@@ -86,6 +87,10 @@ async fn main() -> std::io::Result<()> {
         gitlab_client.clone(),
         app_config.clone(),
     ));
+    let runner_service = Data::new(runner::RunnerService::new(
+        gitlab_client.clone(),
+        app_config.clone(),
+    ));
 
     let project_aggr = Data::new(project::PipelineAggregator::new(
         project_service.get_ref().clone(),
@@ -122,6 +127,7 @@ async fn main() -> std::io::Result<()> {
                 pipeline_service.clone(),
                 branch_service.clone(),
                 artifact_service.clone(),
+                runner_service.clone(),
             ))
     })
     .bind((app_config.server_ip, app_config.server_port))?
@@ -143,6 +149,7 @@ fn configure_app(
     pipeline_service: Data<pipeline::PipelineService>,
     branch_service: Data<branch::BranchService>,
     artifact_service: Data<artifact::ArtifactService>,
+    runner_service: Data<runner::RunnerService>,
 ) -> impl FnOnce(&mut ServiceConfig) {
     move |config| {
         config
@@ -157,6 +164,7 @@ fn configure_app(
             .app_data(pipeline_service)
             .app_data(branch_service)
             .app_data(artifact_service)
+            .app_data(runner_service)
             .route("/health", web::get().to(health_handler))
             .service(scope("/api/auth").configure(auth::setup_handlers))
             .service(
@@ -192,7 +200,8 @@ fn configure_app(
                     .configure(branch::setup_handlers)
                     .configure(schedule::setup_handlers)
                     .configure(job::setup_handlers)
-                    .configure(artifact::setup_handlers),
+                    .configure(artifact::setup_handlers)
+                    .configure(runner::setup_handlers),
             )
             .service(setup_spa());
     }
@@ -233,7 +242,8 @@ mod tests {
     use crate::gitlab::GitlabApi;
     use crate::model::{
         Branch, BranchPipeline, Bridge, Group, Job, JobStatus, Pipeline, Project, ProjectPipeline,
-        ProjectPipelines, Schedule, ScheduleProjectPipeline,
+        ProjectPipelines, Runner, RunnerJob, RunnerManager, RunnerWithJobs, Schedule,
+        ScheduleProjectPipeline,
     };
 
     use super::*;
@@ -280,6 +290,10 @@ mod tests {
                 gitlab_client.clone(),
                 gcd_config.clone(),
             ));
+            let runner_service = Data::new(runner::RunnerService::new(
+                gitlab_client.clone(),
+                gcd_config.clone(),
+            ));
 
             let project_aggr = Data::new(project::PipelineAggregator::new(
                 project_service.get_ref().clone(),
@@ -310,6 +324,7 @@ mod tests {
                 pipeline_service,
                 branch_service,
                 artifact_service,
+                runner_service,
             )))
             .await
         }};
@@ -382,6 +397,28 @@ mod tests {
 
         async fn schedules(&self, _project_id: u64) -> Result<Vec<Schedule>, ApiError> {
             Ok(vec![model::test::new_schedule()])
+        }
+
+        async fn runners(&self, _group_id: u64) -> Result<Vec<Runner>, ApiError> {
+            Ok(vec![model::test::new_runner()])
+        }
+
+        async fn runner_details(&self, _runner_id: u64) -> Result<Runner, ApiError> {
+            Ok(model::test::new_runner())
+        }
+
+        async fn runner_managers(&self, _runner_id: u64) -> Result<Vec<RunnerManager>, ApiError> {
+            Ok(vec![RunnerManager {
+                id: 1,
+                ip_address: "192.0.2.10".to_string(),
+                status: "online".to_string(),
+                job_execution_status: "running".to_string(),
+                contacted_at: None,
+            }])
+        }
+
+        async fn runner_jobs(&self, _runner_id: u64) -> Result<Vec<RunnerJob>, ApiError> {
+            Ok(vec![model::test::new_runner_job()])
         }
 
         async fn jobs(
@@ -469,6 +506,22 @@ mod tests {
 
         assert_eq!(project.id, 456);
         assert_eq!(pipeline.id, 1);
+    }
+
+    #[actix_web::test]
+    async fn test_runners_endpoint() {
+        let app = setup_app!();
+        let req = test::TestRequest::get()
+            .uri("/api/runners?group_id=1")
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+
+        assert!(resp.status().is_success());
+        let body = to_bytes(resp.into_body()).await.unwrap();
+        let runners = serde_json::from_str::<Vec<RunnerWithJobs>>(to_str(&body)).unwrap();
+        assert_eq!(runners.len(), 1);
+        assert_eq!(runners[0].runner.id, 10);
+        assert_eq!(runners[0].jobs[0].id, 20);
     }
 
     #[actix_web::test]

@@ -300,13 +300,17 @@ html.dracula-theme {
 
 .ant-table-wrapper .ant-table-thead > tr > th {
   padding: 0.7rem 0.75rem;
-  color: var(--dashboard-muted);
+  color: #374151;
   font-size: 0.72rem;
   font-weight: 600 !important;
   letter-spacing: 0.045em;
   text-transform: uppercase;
   border-bottom: 1px solid var(--dashboard-border);
   background: var(--dashboard-surface-subtle);
+}
+
+html.dracula-theme .ant-table-wrapper .ant-table-thead > tr > th {
+  color: #d1d5db;
 }
 
 .ant-table-wrapper .ant-table-small .ant-table-tbody > tr > td {

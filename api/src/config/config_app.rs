@@ -69,6 +69,9 @@ pub struct AppConfig {
     pub ttl_job_cache: Duration,
     pub ttl_pipeline_cache: Duration,
     pub ttl_schedule_cache: Duration,
+    pub ttl_runner_cache: Duration,
+    pub ttl_runner_detail_cache: Duration,
+    pub ttl_runner_job_cache: Duration,
     pub ttl_artifact_cache: Duration,
 
     pub pipeline_history_days: i64,
@@ -115,6 +118,18 @@ impl AppConfig {
             ttl_schedule_cache: Duration::from_secs(from_env_or_default(
                 "GITLAB_SCHEDULE_CACHE_TTL_SECONDS",
                 300,
+            )),
+            ttl_runner_cache: Duration::from_secs(from_env_or_default(
+                "GITLAB_RUNNER_CACHE_TTL_SECONDS",
+                60,
+            )),
+            ttl_runner_detail_cache: Duration::from_secs(from_env_or_default(
+                "GITLAB_RUNNER_DETAIL_CACHE_TTL_SECONDS",
+                300,
+            )),
+            ttl_runner_job_cache: Duration::from_secs(from_env_or_default(
+                "GITLAB_RUNNER_JOB_CACHE_TTL_SECONDS",
+                15,
             )),
             ttl_artifact_cache: Duration::from_secs(from_env_or_default(
                 "GITLAB_ARTIFACT_CACHE_TTL_SECONDS",
@@ -193,6 +208,9 @@ impl AppConfig {
                 .and_then(|c| c.ttl_schedule_seconds)
                 .map(Duration::from_secs)
                 .unwrap_or(self.ttl_schedule_cache),
+            ttl_runner_cache: self.ttl_runner_cache,
+            ttl_runner_detail_cache: self.ttl_runner_detail_cache,
+            ttl_runner_job_cache: self.ttl_runner_job_cache,
             ttl_artifact_cache: file_config
                 .cache
                 .as_ref()
@@ -314,6 +332,9 @@ mod tests {
         assert_eq!(config.ttl_job_cache, Duration::from_secs(20));
         assert_eq!(config.ttl_pipeline_cache, Duration::from_secs(20));
         assert_eq!(config.ttl_schedule_cache, Duration::from_secs(600));
+        assert_eq!(config.ttl_runner_cache, Duration::from_secs(120));
+        assert_eq!(config.ttl_runner_detail_cache, Duration::from_secs(600));
+        assert_eq!(config.ttl_runner_job_cache, Duration::from_secs(10));
         assert_eq!(config.pipeline_history_days, 10);
         assert_eq!(config.project_skip_ids, vec![1, 2, 3]);
         assert_eq!(config.group_only_ids, vec![4, 5, 6]);
@@ -343,6 +364,9 @@ mod tests {
         assert_eq!(config.ttl_job_cache, Duration::from_secs(5));
         assert_eq!(config.ttl_pipeline_cache, Duration::from_secs(5));
         assert_eq!(config.ttl_schedule_cache, Duration::from_secs(300));
+        assert_eq!(config.ttl_runner_cache, Duration::from_secs(60));
+        assert_eq!(config.ttl_runner_detail_cache, Duration::from_secs(300));
+        assert_eq!(config.ttl_runner_job_cache, Duration::from_secs(15));
         assert_eq!(config.pipeline_history_days, 5);
         assert!(config.project_skip_ids.is_empty());
         assert!(config.group_only_ids.is_empty());
@@ -401,6 +425,9 @@ mod tests {
         env::set_var("GITLAB_JOB_CACHE_TTL_SECONDS", "20");
         env::set_var("GITLAB_PIPELINE_CACHE_TTL_SECONDS", "20");
         env::set_var("GITLAB_SCHEDULE_CACHE_TTL_SECONDS", "600");
+        env::set_var("GITLAB_RUNNER_CACHE_TTL_SECONDS", "120");
+        env::set_var("GITLAB_RUNNER_DETAIL_CACHE_TTL_SECONDS", "600");
+        env::set_var("GITLAB_RUNNER_JOB_CACHE_TTL_SECONDS", "10");
         env::set_var("GITLAB_PIPELINE_HISTORY_DAYS", "10");
         env::set_var("GITLAB_PROJECT_SKIP_IDS", "1,2,3");
         env::set_var("GITLAB_GROUP_ONLY_IDS", "4,5,6");
