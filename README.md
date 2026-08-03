@@ -92,7 +92,7 @@ docker compose up -d --build
 docker compose up -d
 ```
 
-The current runtime configuration is loaded from `api/config.toml`. `GLCIDBR__*` environment variables are no longer supported.
+The current runtime configuration is loaded from `api/config.toml`.
 
 3. Dashboard should be available at: http://localhost:8080/ showing (by default) all available groups and their
    projects.
@@ -224,7 +224,7 @@ The dashboard should now be available at: https://example.com/my-custom-path
 
 ## 🌍 Runtime configuration
 
-The application reads runtime configuration from `api/config.toml`. The current code does not support `GLCIDBR__*` runtime environment variables.
+The application reads runtime configuration from `api/config.toml`.
 
 See `api/config.example.toml` for the actual supported config format.
 
