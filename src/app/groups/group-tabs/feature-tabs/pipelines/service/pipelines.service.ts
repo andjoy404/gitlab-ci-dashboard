@@ -5,7 +5,7 @@ import { ProjectId, ProjectPipelines } from '$groups/model/project'
 import { ErrorService } from '$service/error.service'
 import { HttpClient, HttpErrorResponse } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core'
-import { Observable, catchError, of, retry } from 'rxjs'
+import { Observable, catchError, of, retry, switchMap } from 'rxjs'
 
 @Injectable({ providedIn: 'root' })
 export class PipelinesService {
@@ -15,16 +15,24 @@ export class PipelinesService {
   getProjectsWithPipelines(
     groupId: GroupId,
     projectIds?: Set<ProjectId>,
-    refresh = false
+    refresh = false,
+    hours = 24
   ): Observable<ProjectPipelines[]> {
-    const url = 'api/projects/pipelines'
-    const params = { ...createParams(groupId, projectIds), refresh: String(refresh) }
+    const params = { ...createParams(groupId, projectIds), hours: String(hours) }
+    const persisted = () => this.http.get<ProjectPipelines[]>('api/analytics/pipelines', { params })
+    const request = refresh
+      ? this.http
+          .get<ProjectPipelines[]>('api/projects/pipelines', {
+            params: { ...createParams(groupId, projectIds), refresh: 'true' }
+          })
+          .pipe(switchMap(persisted))
+      : persisted()
 
-    return this.http.get<ProjectPipelines[]>(url, { params }).pipe(
+    return request.pipe(
       retry(retryConfig),
       catchError(({ status, error }: HttpErrorResponse) => {
         this.errorService.setError({
-          message: error.message,
+          message: error?.message ?? 'Could not load persisted pipelines',
           statusCode: status,
           groupId
         })

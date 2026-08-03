@@ -2,21 +2,11 @@
   <div class="total">
     <span class="label">Latest pipelines</span>
     <strong>{{ total() }}</strong>
-    <span class="hint">one newest pipeline per branch</span>
+    <span class="hint">pipeline per branch</span>
   </div>
 
   <div class="distribution">
     @if (segments().length) {
-      <div class="bar" role="img" aria-label="Pipeline status distribution">
-        @for (segment of segments(); track segment.status) {
-          <div
-            class="segment"
-            [style.background]="segment.status | statusColor"
-            [style.width.%]="segment.percentage"
-            [title]="segment.status + ': ' + segment.count"
-          ></div>
-        }
-      </div>
       <div class="legend">
         @for (segment of segments(); track segment.status) {
           <span class="legend-item">
@@ -25,8 +15,21 @@
           </span>
         }
       </div>
+      <div class="bar" role="img" aria-label="Pipeline status distribution">
+        @for (segment of segments(); track segment.status) {
+          <div
+            [class]="'segment segment-' + segment.status"
+            [style.width.%]="segment.percentage"
+            (pointermove)="moveTooltip($event, segment.status + ': ' + segment.count)"
+            (pointerleave)="hoverTooltip.set(null)"
+          ></div>
+        }
+      </div>
     } @else {
       <span class="empty">No pipelines loaded</span>
     }
   </div>
 </section>
+@if (hoverTooltip(); as tooltip) {
+  <div class="cursor-panel-tooltip" [style.left.px]="tooltip.x" [style.top.px]="tooltip.y">{{ tooltip.text }}</div>
+}

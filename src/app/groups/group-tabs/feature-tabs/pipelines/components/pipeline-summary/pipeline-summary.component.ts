@@ -1,6 +1,6 @@
 import { StatusColorPipe } from '$groups/group-tabs/feature-tabs/pipes/status-color.pipe'
 import { Status } from '$groups/model/status'
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core'
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core'
 
 interface StatusSegment {
   status: Status
@@ -17,6 +17,7 @@ interface StatusSegment {
 })
 export class PipelineSummaryComponent {
   statusCounts = input.required<ReadonlyMap<Status, number>>()
+  hoverTooltip = signal<{ text: string; x: number; y: number } | null>(null)
 
   total = computed(() => Array.from(this.statusCounts().values()).reduce((total, count) => total + count, 0))
 
@@ -35,4 +36,12 @@ export class PipelineSummaryComponent {
       .filter(({ count }) => count > 0)
       .sort((a, b) => b.count - a.count)
   })
+
+  moveTooltip(event: PointerEvent, text: string): void {
+    this.hoverTooltip.set({
+      text,
+      x: Math.min(event.clientX + 14, window.innerWidth - 130),
+      y: Math.min(event.clientY + 14, window.innerHeight - 48)
+    })
+  }
 }

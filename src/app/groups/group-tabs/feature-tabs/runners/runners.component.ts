@@ -3,7 +3,7 @@ import { ProjectId } from '$groups/model/project'
 import { Runner, RunnerWithJobs } from '$groups/model/runner'
 import { forkJoinFlatten } from '$groups/util/fork'
 import { CommonModule } from '@angular/common'
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, input, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzIconModule } from 'ng-zorro-antd/icon'
@@ -35,6 +35,7 @@ export class RunnersComponent implements OnInit {
   filterStatuses = signal<string[]>([])
   loading = signal(false)
   refreshing = signal(false)
+  hoverTooltip = signal<{ text: string; x: number; y: number } | null>(null)
 
   statusCounts = computed<ReadonlyMap<string, number>>(() => {
     const counts = new Map<string, number>()
@@ -65,9 +66,16 @@ export class RunnersComponent implements OnInit {
     )
   })
 
-  ngOnInit(): void {
-    this.load(false, true)
+  constructor() {
+    effect((onCleanup) => {
+      this.groupMap()
+      const request = this.load(false, true)
 
+      onCleanup(() => request.unsubscribe())
+    })
+  }
+
+  ngOnInit(): void {
     interval(RUNNER_REFRESH_INTERVAL)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -102,14 +110,32 @@ export class RunnersComponent implements OnInit {
     return this.filterStatuses().includes(status)
   }
 
-  private load(refresh: boolean, initial: boolean): void {
+  moveTooltip(event: PointerEvent, text: string): void {
+    this.hoverTooltip.set({
+      text,
+      x: Math.min(event.clientX + 14, window.innerWidth - 130),
+      y: Math.min(event.clientY + 14, window.innerHeight - 48)
+    })
+  }
+
+  runnerSegmentStyle(status: string): Record<string, string> {
+    const color = status === 'running' ? '#18d99a' : status === 'idle' ? '#39a0ff' : status === 'paused' ? '#ffc21c' : status === 'offline' ? '#ff8291' : '#ff5267'
+    const fill = status === 'running' ? '#18d99a52' : status === 'idle' ? '#39a0ff52' : status === 'paused' ? '#ffc21c52' : status === 'offline' ? '#ff829152' : '#ff526752'
+    return {
+      background: fill,
+      border: `1px solid ${color}`,
+      boxShadow: `inset 0 0 16px ${fill}, 0 0 6px ${fill}`
+    }
+  }
+
+  private load(refresh: boolean, initial: boolean) {
     if (initial) {
       this.loading.set(true)
     } else {
       this.refreshing.set(true)
     }
 
-    this.getRunners(refresh)
+    return this.getRunners(refresh)
       .pipe(
         finalize(() => {
           this.loading.set(false)

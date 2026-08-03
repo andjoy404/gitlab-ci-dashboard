@@ -1,41 +1,4 @@
 <header class="header">
-  <div class="dashboard-brand">
-    <span class="dashboard-mark" aria-hidden="true">CI</span>
-    <span class="dashboard-copy">
-      <strong>Gitlab CI Dashboard</strong>
-      <small>Pipeline observability</small>
-    </span>
-  </div>
-  @if (auth.authenticated()) {
-    <div class="header-actions">
-      <button
-        nzType="text"
-        nz-button
-        nz-tooltip
-        [nzTooltipTitle]="theme.isDracula() ? 'Use light theme' : 'Use Dracula theme'"
-        (click)="theme.toggle()"
-      >
-        <span class="theme-icon" aria-hidden="true">{{ theme.isDracula() ? '☀' : '☾' }}</span>
-        <span class="action-label">{{ theme.isDracula() ? 'Light' : 'Dracula' }}</span>
-      </button>
-      <button nzType="text" nz-button nz-tooltip nzTooltipTitle="Favorites" (click)="favorites.toggle()">
-        <span nz-icon nzType="star" nzTheme="fill" nzTwotoneColor="#FFD700"></span>
-        <span class="action-label">Favorites</span>
-      </button>
-      @if (auth.enabled()) {
-        <button nzType="text" nz-button nz-tooltip nzTooltipTitle="Sign out" (click)="auth.logout()">
-          <span nz-icon nzType="logout"></span>
-          <span class="action-label">Sign out</span>
-        </button>
-      }
-      <span class="header-divider"></span>
-      <button nzType="text" nz-button nz-tooltip nzTooltipTitle="View on GitHub" (click)="onClick()">
-        <span class="font-md font-white" nz-icon nzType="github"></span>
-      </button>
-    </div>
-  } @else {
-    <button nzType="text" nz-button nz-tooltip nzTooltipTitle="View on GitHub" (click)="onClick()">
-      <span class="font-md font-white" nz-icon nzType="github"></span>
-    </button>
-  }
+  <div class="dashboard-brand"><span class="dashboard-mark" aria-hidden="true">@if(config.companyLogo()){<img [src]="config.companyLogo()" alt="" />}@else{<span>CI</span>}</span><span class="dashboard-copy"><strong>{{config.companyName()}}</strong><small>GitLab CI Dashboard</small></span></div>
+  @if (auth.authenticated()) { <div class="header-actions"><button nzType="text" nz-button (click)="theme.toggle()"><span nz-icon [nzType]="theme.isDracula() ? 'sun' : 'moon'"></span><span class="action-label">{{ theme.isDracula() ? 'Light' : 'Dracula' }}</span></button>@if (auth.enabled()) { <button nzType="text" nz-button (click)="auth.logout()"><span nz-icon nzType="logout"></span><span class="action-label">Sign out</span></button> }<span class="header-divider"></span><button nzType="text" nz-button (click)="onClick()"><span class="font-md font-white" nz-icon nzType="github"></span></button></div> }
 </header>

@@ -1,27 +1,9 @@
 @if (loading()) {
-  <div class="spinner">
-    <nz-spin />
-  </div>
+  <div class="spinner"><nz-spin /></div>
 } @else {
-  @if (groups().length > 0) {
-    @if (selectedGroup(); as group) {
-      <gcd-feature-tabs [groupMap]="getGroupMap(group)" [groupName]="group.name" />
-    }
-    @if (favorites.open()) {
-      <gcd-favorites (close)="favorites.close()"></gcd-favorites>
-    }
+  @if (selectedGroup(); as group) {
+    <gcd-feature-tabs [groupMap]="selectedGroupMap()" [groupName]="group.name" [availableGroups]="groups()" (environmentsChanged)="onEnvironmentsChanged()" />
   } @else {
-    <div class="alert">
-      <nz-alert
-        [nzAction]="action"
-        nzType="warning"
-        nzMessage="Warning"
-        nzDescription="Received 0 groups from API, maybe unauthorized?"
-        nzShowIcon
-      />
-      <ng-template #action>
-        <button nz-button nzSize="small" nzType="primary" nzGhost (click)="onReload()">Refresh</button>
-      </ng-template>
-    </div>
+    <gcd-feature-tabs [groupMap]="emptyGroupMap" groupName="No environment configured" [availableGroups]="groups()" [emptyState]="true" (environmentsChanged)="onEnvironmentsChanged()" />
   }
 }

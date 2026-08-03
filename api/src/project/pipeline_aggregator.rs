@@ -1,3 +1,4 @@
+use crate::analytics::AnalyticsStore;
 use crate::error::ApiError;
 use crate::job::JobService;
 use crate::model::{JobStatus, PipelineStatus, Project, ProjectPipeline, ProjectPipelines};
@@ -9,6 +10,7 @@ pub struct PipelineAggregator {
     project_service: ProjectService,
     pipeline_service: PipelineService,
     job_service: JobService,
+    analytics: AnalyticsStore,
 }
 
 impl PipelineAggregator {
@@ -16,11 +18,13 @@ impl PipelineAggregator {
         project_service: ProjectService,
         pipeline_service: PipelineService,
         job_service: JobService,
+        analytics: AnalyticsStore,
     ) -> Self {
         Self {
             project_service,
             pipeline_service,
             job_service,
+            analytics,
         }
     }
 }
@@ -89,7 +93,11 @@ impl PipelineAggregator {
             .project_service
             .get_projects(group_id, project_ids)
             .await?;
-        self.with_pipelines(group_id, projects, refresh).await
+        let result = self.with_pipelines(group_id, projects, refresh).await?;
+        if let Err(error) = self.analytics.persist(&result).await {
+            log::error!("Could not persist pipeline analytics for group {group_id}: {error}");
+        }
+        Ok(result)
     }
 
     async fn with_pipelines(

@@ -1,7 +1,6 @@
 import { Group, GroupId } from '$groups/model/group'
 import { GroupService } from '$groups/service/group.service'
 import { filterNotNull } from '$groups/util/filter'
-import { FavoritesPanelService } from '$service/favorites-panel.service'
 
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core'
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop'
@@ -10,7 +9,6 @@ import { NzAlertModule } from 'ng-zorro-antd/alert'
 import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzSpinModule } from 'ng-zorro-antd/spin'
 import { finalize, map } from 'rxjs'
-import { FavoritesComponent } from './favorites/favorites.component'
 import { FeatureTabsComponent } from './feature-tabs/feature-tabs.component'
 import { ProjectId } from '$groups/model/project'
 
@@ -20,8 +18,7 @@ import { ProjectId } from '$groups/model/project'
     NzAlertModule,
     NzButtonModule,
     NzSpinModule,
-    FeatureTabsComponent,
-    FavoritesComponent
+    FeatureTabsComponent
   ],
   templateUrl: './group-tabs.component.html',
   styleUrls: ['./group-tabs.component.scss']
@@ -29,9 +26,9 @@ import { ProjectId } from '$groups/model/project'
 export class GroupTabsComponent {
   private groupService = inject(GroupService)
   private destroyRef = inject(DestroyRef)
-  favorites = inject(FavoritesPanelService)
 
   groups = signal<Group[]>([])
+  readonly emptyGroupMap = new Map<GroupId, Set<ProjectId>>()
   loading = signal(false)
 
   selectedGroupId = signal<number | undefined>(undefined)
@@ -41,16 +38,16 @@ export class GroupTabsComponent {
     return groups.findIndex(({ id }) => id === selectedGroupId)
   })
   selectedGroup = computed(() => this.groups().find(({ id }) => id === this.selectedGroupId()))
+  selectedGroupMap = computed(() => {
+    const group = this.selectedGroup()
+    return group ? new Map<GroupId, Set<ProjectId>>([[group.id, new Set()]]) : this.emptyGroupMap
+  })
 
   constructor(
     private route: ActivatedRoute,
     private router: Router
   ) {
-    this.loading.set(true)
-    this.groupService
-      .getGroups()
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe((groups) => this.groups.set(groups))
+    this.loadGroups(false)
 
     effect(() => {
       if (this.selectedIndex() === -1) {
@@ -84,6 +81,10 @@ export class GroupTabsComponent {
     window.location.reload()
   }
 
+  onEnvironmentsChanged(): void {
+    this.loadGroups(true)
+  }
+
   onChange({ index }: { index: number }): void {
     const groups = this.groups()
     if (groups.length > 0) {
@@ -92,12 +93,21 @@ export class GroupTabsComponent {
     }
   }
 
-  getGroupMap({ id }: Group): Map<GroupId, Set<ProjectId>> {
-    return new Map([[id, new Set()]])
-  }
-
   private nagivate(groupId: GroupId): void {
     const featureId = this.route.snapshot.params['featureId'] ?? 'latest-pipelines'
     this.router.navigate([groupId, featureId])
+  }
+
+  private loadGroups(selectFirst: boolean): void {
+    this.loading.set(true)
+    this.groupService
+      .getGroups()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe((groups) => {
+        this.groups.set(groups)
+        if (selectFirst && groups.length > 0) {
+          this.nagivate(groups[0].id)
+        }
+      })
   }
 }

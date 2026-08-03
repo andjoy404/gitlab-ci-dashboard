@@ -44,13 +44,13 @@ export class DashboardPreloadService {
     return [
       {
         feature: 'latest-pipelines',
-        url: 'api/projects/latest-pipelines',
-        params
+        url: 'api/analytics/summary',
+        params: { group_ids: String(groupId), hours: '24' }
       },
       {
         feature: 'pipelines',
         url: 'api/projects/pipelines',
-        params: { ...params, refresh: 'false' }
+        params: { ...params, refresh: 'true' }
       },
       {
         feature: 'runners',

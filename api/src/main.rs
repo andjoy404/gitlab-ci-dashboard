@@ -2,23 +2,25 @@
 
 use crate::config::config_app::{ApiConfig, AppConfig};
 use crate::config::config_file;
-use crate::gitlab::GitlabClient;
+use crate::federated_gitlab::FederatedGitlabClient;
 use crate::spa::Spa;
 use actix_web::dev::HttpServiceFactory;
 use actix_web::web::{Data, ServiceConfig};
 use actix_web::{middleware::Logger, web, App, HttpResponse, HttpServer, Responder};
 use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
-use dotenv::dotenv;
 use serde_querystring_actix::{ParseMode, QueryStringConfig};
 use std::sync::Arc;
 use web::scope;
 
+mod analytics;
 mod artifact;
 mod auth;
 mod branch;
 mod config;
 mod error;
+mod environment;
 mod gitlab;
+mod federated_gitlab;
 mod group;
 mod job;
 mod model;
@@ -31,23 +33,22 @@ mod util;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
     env_logger::init();
 
-    let file_config = config_file::FileConfig::load_from_toml();
-    let file_config = match file_config {
-        Ok(ref c) => Some(c),
-        Err(config_file::Error::Deserialize(msg)) => panic!("{}", msg),
-        Err(_) => None,
-    };
+    let file_config = config_file::FileConfig::load_from_toml().map_err(|error| {
+        let message = match error { config_file::Error::Read => "config.toml is required".to_string(), config_file::Error::Deserialize(message) => message };
+        std::io::Error::new(std::io::ErrorKind::InvalidData, message)
+    })?;
+    let app_config = AppConfig::from_file(&file_config);
+    let api_config = ApiConfig::from_file(&file_config);
 
-    let mut app_config = AppConfig::new();
-    let mut api_config = ApiConfig::new();
-
-    if let Some(fc) = file_config {
-        app_config = app_config.merge_with_file_config(fc);
-        api_config = api_config.merge_with_file_config(fc);
-    };
+    let analytics_store = analytics::AnalyticsStore::connect(
+        app_config.analytics_enabled,
+        app_config.database_url.as_deref(),
+        app_config.database_max_connections,
+    )
+    .await
+    .map_err(std::io::Error::other)?;
 
     log::info!("Gitlab CI Dashboard :: {} ::", &api_config.api_version);
 
@@ -55,13 +56,20 @@ async fn main() -> std::io::Result<()> {
     log::debug!("{api_config:?}");
 
     let api_config = Data::new(api_config);
-    let auth_state = Data::new(auth::AuthState::from_env());
     let qs_config = QueryStringConfig::default().parse_mode(ParseMode::Delimiter(b','));
 
-    let gitlab_client = Arc::new(GitlabClient::new(
-        &app_config.gitlab_url,
-        &app_config.gitlab_token,
+    let pool = analytics_store.pool().ok_or_else(|| std::io::Error::other("Database must be enabled for Web-managed GitLab environments"))?;
+    let auth_state = Data::new(auth::AuthState::new(pool.clone(), &file_config.authentication).await.map_err(std::io::Error::other)?);
+    let environment_store = environment::EnvironmentStore::new(
+        pool,
+        &file_config.security.environment_token_encryption_key,
+    ).map_err(std::io::Error::other)?;
+    let federated_client = Arc::new(FederatedGitlabClient::new(
+        environment_store.clients().await.map_err(std::io::Error::other)?
     ));
+    let gitlab_client: Arc<dyn crate::gitlab::GitlabApi> = federated_client.clone();
+    let environment_store = Data::new(environment_store);
+    let federated_client = Data::new(federated_client);
 
     let group_service = Data::new(group::GroupService::new(
         gitlab_client.clone(),
@@ -90,12 +98,14 @@ async fn main() -> std::io::Result<()> {
     let runner_service = Data::new(runner::RunnerService::new(
         gitlab_client.clone(),
         app_config.clone(),
+        analytics_store.clone(),
     ));
 
     let project_aggr = Data::new(project::PipelineAggregator::new(
         project_service.get_ref().clone(),
         pipeline_service.get_ref().clone(),
         job_service.get_ref().clone(),
+        analytics_store.clone(),
     ));
     let branch_aggr = Data::new(branch::PipelineAggregator::new(
         branch_service.get_ref().clone(),
@@ -109,6 +119,16 @@ async fn main() -> std::io::Result<()> {
         job_service.get_ref().clone(),
     ));
 
+    let analytics_store_data = Data::new(analytics_store.clone());
+    analytics::spawn_sync(
+        analytics_store,
+        group_service.clone(),
+        project_aggr.clone(),
+        runner_service.clone(),
+        app_config.analytics_sync_interval,
+        app_config.analytics_retention_days,
+    );
+
     let prom = setup_prometheus();
 
     HttpServer::new(move || {
@@ -117,6 +137,9 @@ async fn main() -> std::io::Result<()> {
             .wrap(prom.clone())
             .configure(configure_app(
                 api_config.clone(),
+                analytics_store_data.clone(),
+                environment_store.clone(),
+                federated_client.clone(),
                 auth_state.clone(),
                 qs_config.clone(),
                 group_service.clone(),
@@ -139,6 +162,9 @@ async fn main() -> std::io::Result<()> {
 #[allow(clippy::too_many_arguments)]
 fn configure_app(
     api_config: Data<ApiConfig>,
+    analytics_store: Data<analytics::AnalyticsStore>,
+    environment_store: Data<environment::EnvironmentStore>,
+    federated_client: Data<Arc<FederatedGitlabClient>>,
     auth_state: Data<auth::AuthState>,
     qs_config: QueryStringConfig,
     group_service: Data<group::GroupService>,
@@ -154,6 +180,9 @@ fn configure_app(
     move |config| {
         config
             .app_data(api_config)
+            .app_data(analytics_store)
+            .app_data(environment_store)
+            .app_data(federated_client)
             .app_data(auth_state)
             .app_data(qs_config)
             .app_data(group_service)
@@ -193,6 +222,9 @@ fn configure_app(
                             )))
                         }
                     })
+                    .configure(environment::setup_handlers)
+                    .configure(auth::setup_user_handlers)
+                    .configure(analytics::setup_handlers)
                     .configure(config::setup_handlers)
                     .configure(group::setup_handlers)
                     .configure(project::setup_handlers)
@@ -254,9 +286,9 @@ mod tests {
             use super::*;
             use actix_web::{test, App};
 
-            env::set_var("GITLAB_BASE_URL", "https://gitlab.url");
-            env::set_var("GITLAB_API_TOKEN", "token123");
-            env::set_var("API_READ_ONLY", "false");
+            env::set_var("GLCIDBR__GITLAB_BASE_URL", "https://gitlab.url");
+            env::set_var("GLCIDBR__GITLAB_API_TOKEN", "token123");
+            env::set_var("GLCIDBR__API_READ_ONLY", "false");
 
             let gcd_config = AppConfig::new();
             let qs_config = QueryStringConfig::default().parse_mode(ParseMode::Delimiter(b','));
@@ -264,7 +296,7 @@ mod tests {
             let gitlab_client = Arc::new(GitlabClientTest {});
 
             let api_config = Data::new(ApiConfig::new());
-            let auth_state = Data::new(auth::AuthState::from_env());
+            let auth_state = Data::new(auth::AuthState::for_test());
 
             let group_service = Data::new(group::GroupService::new(
                 gitlab_client.clone(),
@@ -293,12 +325,14 @@ mod tests {
             let runner_service = Data::new(runner::RunnerService::new(
                 gitlab_client.clone(),
                 gcd_config.clone(),
+                analytics::AnalyticsStore::default(),
             ));
 
             let project_aggr = Data::new(project::PipelineAggregator::new(
                 project_service.get_ref().clone(),
                 pipeline_service.get_ref().clone(),
                 job_service.get_ref().clone(),
+                analytics::AnalyticsStore::default(),
             ));
             let branch_aggr = Data::new(branch::PipelineAggregator::new(
                 branch_service.get_ref().clone(),
@@ -314,6 +348,7 @@ mod tests {
 
             test::init_service(App::new().configure(configure_app(
                 api_config,
+                Data::new(analytics::AnalyticsStore::default()),
                 auth_state,
                 qs_config,
                 group_service,

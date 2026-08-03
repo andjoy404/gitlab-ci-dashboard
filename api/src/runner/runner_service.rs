@@ -1,3 +1,4 @@
+use crate::analytics::AnalyticsStore;
 use crate::config::config_app::AppConfig;
 use crate::error::ApiError;
 use crate::gitlab::GitlabApi;
@@ -14,10 +15,11 @@ pub struct RunnerService {
     last_known_runners: Cache<u64, Vec<Runner>>,
     last_known_jobs: Cache<u64, Vec<RunnerJob>>,
     client: Arc<dyn GitlabApi>,
+    analytics: AnalyticsStore,
 }
 
 impl RunnerService {
-    pub fn new(client: Arc<dyn GitlabApi>, config: AppConfig) -> Self {
+    pub fn new(client: Arc<dyn GitlabApi>, config: AppConfig, analytics: AnalyticsStore) -> Self {
         Self {
             runners: Cache::builder()
                 .time_to_live(config.ttl_runner_cache)
@@ -34,6 +36,7 @@ impl RunnerService {
             last_known_runners: Cache::new(100),
             last_known_jobs: Cache::new(10_000),
             client,
+            analytics,
         }
     }
 
@@ -42,6 +45,16 @@ impl RunnerService {
         group_id: u64,
         refresh: bool,
     ) -> Result<Vec<RunnerWithJobs>, ApiError> {
+        if !refresh {
+            match self.analytics.load_runners(group_id).await {
+                Ok(Some(runners)) => return Ok(runners),
+                Ok(None) => {}
+                Err(error) => {
+                    log::warn!("Could not load persisted runners for group {group_id}: {error}");
+                }
+            }
+        }
+
         if refresh {
             self.runners.invalidate(&group_id).await;
         }
@@ -65,6 +78,12 @@ impl RunnerService {
                         error
                     );
                     stale
+                } else if error.is_forbidden() {
+                    log::warn!(
+                        "Runner data is not permitted for group {}. Projects and pipelines remain available.",
+                        group_id
+                    );
+                    Vec::new()
                 } else {
                     return Err(error.as_ref().to_owned());
                 }
@@ -167,6 +186,9 @@ impl RunnerService {
                 .cmp(&runner_priority(&b.runner))
                 .then_with(|| a.runner.description.cmp(&b.runner.description))
         });
+        if let Err(error) = self.analytics.persist_runners(group_id, &result).await {
+            log::error!("Could not persist runners for group {group_id}: {error}");
+        }
         Ok(result)
     }
 }

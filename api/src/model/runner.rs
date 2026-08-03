@@ -25,18 +25,18 @@ pub struct RunnerManager {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Runner {
     pub id: u64,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "nullable_string")]
     pub description: String,
     #[serde(default)]
     pub paused: bool,
     #[serde(default)]
     pub is_shared: bool,
     pub online: Option<bool>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "nullable_string")]
     pub runner_type: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "nullable_string")]
     pub status: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "nullable_string")]
     pub job_execution_status: String,
     #[serde(default)]
     pub tag_list: Vec<String>,
@@ -71,7 +71,7 @@ pub struct RunnerJob {
     pub name: String,
     #[serde(default)]
     pub stage: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "nullable_string")]
     pub status: String,
     #[serde(rename = "ref", default)]
     pub branch: String,

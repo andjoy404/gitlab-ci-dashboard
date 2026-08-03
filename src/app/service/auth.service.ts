@@ -5,6 +5,8 @@ import { EMPTY, Observable, catchError, finalize, tap, throwError } from 'rxjs'
 interface AuthStatus {
   authenticated: boolean
   enabled: boolean
+  username?: string
+  role?: 'admin' | 'editor'
 }
 
 @Injectable({ providedIn: 'root' })
@@ -13,6 +15,8 @@ export class AuthService {
 
   authenticated = signal(false)
   enabled = signal(false)
+  username = signal('')
+  role = signal<'admin' | 'editor' | undefined>(undefined)
   loading = signal(true)
 
   constructor() {
@@ -29,6 +33,8 @@ export class AuthService {
   logout(): void {
     this.http.post('api/auth/logout', {}).subscribe(() => {
       this.authenticated.set(false)
+      this.username.set('')
+      this.role.set(undefined)
     })
   }
 
@@ -49,5 +55,11 @@ export class AuthService {
   private applyStatus(status: AuthStatus): void {
     this.authenticated.set(status.authenticated)
     this.enabled.set(status.enabled)
+    this.username.set(status.username ?? '')
+    this.role.set(status.role)
+  }
+
+  isAdmin(): boolean {
+    return this.role() === 'admin'
   }
 }

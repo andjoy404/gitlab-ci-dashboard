@@ -28,6 +28,14 @@ impl ApiError {
         Self::new(StatusCode::BAD_REQUEST, message)
     }
 
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::FORBIDDEN, message)
+    }
+
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::NOT_FOUND, message)
+    }
+
     pub fn with_u16_code(status_code: u16, message: String) -> Self {
         Self {
             status_code,

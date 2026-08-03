@@ -2,9 +2,11 @@ import { Runner, RunnerWithJobs } from '$groups/model/runner'
 import { compareString } from '$groups/util/compare'
 import { Header } from '$groups/util/table'
 import { CommonModule } from '@angular/common'
-import { ChangeDetectionStrategy, Component, input } from '@angular/core'
+import { FormsModule } from '@angular/forms'
+import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core'
 import { NzResizableModule, NzResizeEvent } from 'ng-zorro-antd/resizable'
-import { NzTableModule } from 'ng-zorro-antd/table'
+import { NzSelectModule } from 'ng-zorro-antd/select'
+import { NzTableComponent, NzTableModule } from 'ng-zorro-antd/table'
 import { NzTagModule } from 'ng-zorro-antd/tag'
 import { TablePaginatorDirective } from '../../directives/table-paginator.directive'
 
@@ -53,7 +55,7 @@ const headers: ResizableHeader[] = [
 
 @Component({
   selector: 'gcd-runner-table',
-  imports: [CommonModule, NzResizableModule, NzTableModule, NzTagModule, TablePaginatorDirective],
+  imports: [CommonModule, FormsModule, NzResizableModule, NzSelectModule, NzTableModule, NzTagModule, TablePaginatorDirective],
   templateUrl: './runner-table.component.html',
   styleUrls: ['./runner-table.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -62,6 +64,9 @@ export class RunnerTableComponent {
   runners = input.required<RunnerWithJobs[]>()
   headers = headers
   jobsWidth = 900
+  pageIndex = signal(1)
+  readonly pageSizeOptions = [10, 20, 30, 40, 50, 100]
+  readonly allPageSize = 1_000_000_000
 
   get widthConfig(): string[] {
     return [...this.headers.map(({ width }) => `${width}px`), `${this.jobsWidth}px`]
@@ -98,6 +103,21 @@ export class RunnerTableComponent {
 
   onJobsResize({ width }: NzResizeEvent): void {
     if (width) this.jobsWidth = width
+  }
+
+  pageCount(total:number,pageSize:number){return Math.max(1,Math.ceil(total/pageSize))}
+
+  rangeStart(total: number, pageSize: number): number {
+    return total ? (this.pageIndex() - 1) * pageSize + 1 : 0
+  }
+
+  rangeEnd(total: number, pageSize: number): number {
+    return Math.min(this.pageIndex() * pageSize, total)
+  }
+
+  changePageSize(table: NzTableComponent<RunnerWithJobs>, pageSize: number): void {
+    table.onPageSizeChange(pageSize)
+    this.pageIndex.set(1)
   }
 }
 
