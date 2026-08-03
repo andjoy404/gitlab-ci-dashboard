@@ -81,16 +81,18 @@ projects, potentially resulting in undetected failed pipelines.
 
 ![Access Token](.github/img/access_token.png)
 
-2. Run docker with a TOML configuration file. The application reads runtime configuration from `api/config.toml`.
+2. Start the application using Docker Compose (the repository includes `docker-compose.yml`). The service
+   `gitlab-ci-dashboard` already mounts `./api/config.toml` into the container as `/app/config.toml`.
 
 ```bash
-docker run \
-  -p 8080:8080 \
-  -v ./api/config.toml:/app/config.toml \
-  larscom/gitlab-ci-dashboard:latest
+# Build and start the services (uses local `docker-compose.yml`)
+docker compose up -d --build
+
+# Or, start using the published image without rebuilding:
+docker compose up -d
 ```
 
-> The current runtime configuration is loaded from `api/config.toml`. `GLCIDBR__*` environment variables are no longer supported.
+The current runtime configuration is loaded from `api/config.toml`. `GLCIDBR__*` environment variables are no longer supported.
 
 3. Dashboard should be available at: http://localhost:8080/ showing (by default) all available groups and their
    projects.
@@ -184,14 +186,20 @@ If you are running a gitlab instance that is using a TLS certificate signed with
 
 This is needed when the dashboard backend is unable to make a connection to the gitlab API over HTTPS.
 
-Mount the `ca.crt` inside the container (`/app/certs/ca.crt`)
+Mount the `ca.crt` inside the container (`/app/certs/ca.crt`). With Docker Compose you can add the mount
+via an override file and restart the service:
 
 ```bash
-docker run \
-  -p 8080:8080 \
-  -v ./api/config.toml:/app/config.toml \
-  -v ./ca.crt:/app/certs/ca.crt \
-  larscom/gitlab-ci-dashboard:latest
+# Create `docker-compose.override.yml` to add the CA mount
+cat > docker-compose.override.yml <<'EOF'
+services:
+  gitlab-ci-dashboard:
+    volumes:
+      - ./ca.crt:/app/certs/ca.crt:ro
+EOF
+
+# Then start/restart the services
+docker compose up -d --build
 ```
 
 ### Troubleshooting
