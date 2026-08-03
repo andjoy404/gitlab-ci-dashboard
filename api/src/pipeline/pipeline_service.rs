@@ -156,7 +156,7 @@ fn latest_by_branch(pipelines: Vec<Pipeline>) -> Vec<Pipeline> {
     }
 
     let mut pipelines = newest.into_values().collect::<Vec<_>>();
-    pipelines.sort_unstable_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    pipelines.sort_unstable_by_key(|pipeline| std::cmp::Reverse(pipeline.updated_at));
     pipelines
 }
 

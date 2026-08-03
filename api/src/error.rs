@@ -32,6 +32,7 @@ impl ApiError {
         Self::new(StatusCode::FORBIDDEN, message)
     }
 
+    #[allow(dead_code)]
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_FOUND, message)
     }

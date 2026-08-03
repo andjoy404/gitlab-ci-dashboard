@@ -50,7 +50,7 @@ async fn main() -> std::io::Result<()> {
     .await
     .map_err(std::io::Error::other)?;
 
-    log::info!("Gitlab CI Dashboard :: {} ::", &api_config.api_version);
+    log::info!("Gitlab CI Dashboard :: {} ::", api_config.api_version);
 
     log::debug!("{app_config:?}");
     log::debug!("{api_config:?}");

@@ -161,7 +161,7 @@ impl GitlabClient {
         let response = self.do_post(path.clone(), params, body_json).await?;
         let json = response.text().await?;
 
-        log::debug!("path: {}, JSON response: {}", &path, &json);
+        log::debug!("path: {}, JSON response: {}", path, json);
 
         let data =
             serde_json::from_str(&json).map_err(|e| ApiError::server_error(e.to_string()))?;
@@ -228,7 +228,7 @@ impl GitlabClient {
         let response = self.do_get(path.clone(), params).await?;
         let json = response.text().await?;
 
-        log::debug!("path: {}, JSON response: {}", &path, &json);
+        log::debug!("path: {}, JSON response: {}", path, json);
 
         let data =
             serde_json::from_str(&json).map_err(|e| ApiError::server_error(e.to_string()))?;
@@ -249,7 +249,7 @@ impl GitlabClient {
         let total_pages = get_total_pages(response.headers());
         let json = response.text().await?;
 
-        log::debug!("page: {}, path: {}, JSON response: {}", page, &path, &json);
+        log::debug!("page: {}, path: {}, JSON response: {}", page, path, json);
         let data =
             serde_json::from_str(&json).map_err(|e| ApiError::server_error(e.to_string()))?;
 
@@ -269,7 +269,7 @@ impl GitlabClient {
         T: DeserializeOwned + Send + 'static,
         T: std::fmt::Debug,
     {
-        log::debug!("fetching page 1, path: {}", &path);
+        log::debug!("fetching page 1, path: {}", path);
 
         let Page {
             data: mut all_data,
@@ -277,7 +277,7 @@ impl GitlabClient {
             page: _,
         } = self.get_page(path.clone(), 1, params.clone()).await?;
 
-        log::debug!("fetched page 1/{total_pages}, path: {}", &path);
+        log::debug!("fetched page 1/{total_pages}, path: {}", path);
 
         if total_pages == 1 {
             return Ok(all_data);
@@ -291,7 +291,7 @@ impl GitlabClient {
             let path = path.clone();
             let tx = tx.clone();
             tokio::spawn(async move {
-                log::debug!("fetching page {page}, path: {}", &path);
+                log::debug!("fetching page {page}, path: {}", path);
                 let result = self_clone.get_page(path, page, params).await;
                 if let Err(err) = tx.send(result).await {
                     log::error!("could not send result via channel. err: {err}");

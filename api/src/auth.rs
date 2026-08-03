@@ -75,8 +75,79 @@ async fn logout(req:HttpRequest,auth:web::Data<AuthState>)->HttpResponse{if let 
 
 async fn list_users(req:HttpRequest,auth:web::Data<AuthState>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;let rows=sqlx::query("SELECT id,username,display_name,email,role,enabled,created_at FROM app_users ORDER BY LOWER(username)").fetch_all(&auth.pool).await.map_err(db)?;let users=rows.into_iter().map(|r|UserView{id:r.get("id"),username:r.get("username"),display_name:r.get("display_name"),email:r.get("email"),role:r.get("role"),enabled:r.get("enabled"),created_at:r.get("created_at")}).collect::<Vec<_>>();Ok(HttpResponse::Ok().json(users))}
 async fn create_user(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<CreateUser>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;validate(&input.username,&input.role,Some(&input.password))?;let hash=hash_password(&input.password).map_err(ApiError::server_error)?;let row=sqlx::query("INSERT INTO app_users(username,password_hash,display_name,email,role) VALUES($1,$2,$3,$4,$5) RETURNING id").bind(input.username.trim()).bind(hash).bind(input.display_name.trim()).bind(input.email.trim()).bind(&input.role).fetch_one(&auth.pool).await.map_err(db)?;Ok(HttpResponse::Created().json(serde_json::json!({"id":row.get::<i64,_>("id")})))}
-async fn update_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i64>,input:web::Json<UpdateUser>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;validate(&input.username,&input.role,None)?;let id=path.into_inner();if let Some(current)=auth.session(&req){if current.user_id==id&&(!input.enabled||input.role!="admin"){return Err(ApiError::bad_request("You cannot disable or remove your own administrator role"))}}if input.password.is_empty(){sqlx::query("UPDATE app_users SET username=$1,display_name=$2,email=$3,role=$4,enabled=$5,updated_at=NOW() WHERE id=$6").bind(input.username.trim()).bind(input.display_name.trim()).bind(input.email.trim()).bind(&input.role).bind(input.enabled).bind(id).execute(&auth.pool).await.map_err(db)?;}else{let hash=hash_password(&input.password).map_err(ApiError::server_error)?;sqlx::query("UPDATE app_users SET username=$1,password_hash=$2,display_name=$3,email=$4,role=$5,enabled=$6,updated_at=NOW() WHERE id=$7").bind(input.username.trim()).bind(hash).bind(input.display_name.trim()).bind(input.email.trim()).bind(&input.role).bind(input.enabled).bind(id).execute(&auth.pool).await.map_err(db)?;}auth.sessions.lock().expect("sessions lock").retain(|_,session|session.user_id!=id);Ok(HttpResponse::NoContent().finish())}
-async fn delete_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i64>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;let id=path.into_inner();if auth.session(&req).is_some_and(|s|s.user_id==id){return Err(ApiError::bad_request("You cannot delete your own account"))}let role:Option<String>=sqlx::query_scalar("SELECT role FROM app_users WHERE id=$1").bind(id).fetch_optional(&auth.pool).await.map_err(db)?;if role.as_deref()==Some("admin"){let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM app_users WHERE role='admin' AND enabled=TRUE").fetch_one(&auth.pool).await.map_err(db)?;if count<=1{return Err(ApiError::bad_request("At least one enabled administrator is required"))}}sqlx::query("DELETE FROM app_users WHERE id=$1").bind(id).execute(&auth.pool).await.map_err(db)?;auth.sessions.lock().expect("sessions lock").retain(|_,session|session.user_id!=id);Ok(HttpResponse::NoContent().finish())}
+async fn update_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i64>,input:web::Json<UpdateUser>)->Result<HttpResponse,ApiError>{
+    auth.require_admin(&req)?;
+    validate(&input.username,&input.role,None)?;
+    let id = path.into_inner();
+
+    if let Some(current) = auth.session(&req) {
+        if current.user_id == id && (!input.enabled || input.role != "admin") {
+            return Err(ApiError::bad_request("You cannot disable or remove your own administrator role"));
+        }
+    }
+
+    if input.password.is_empty() {
+        sqlx::query("UPDATE app_users SET username=$1,display_name=$2,email=$3,role=$4,enabled=$5,updated_at=NOW() WHERE id=$6")
+            .bind(input.username.trim())
+            .bind(input.display_name.trim())
+            .bind(input.email.trim())
+            .bind(&input.role)
+            .bind(input.enabled)
+            .bind(id)
+            .execute(&auth.pool)
+            .await
+            .map_err(db)?;
+    } else {
+        let hash = hash_password(&input.password).map_err(ApiError::server_error)?;
+        sqlx::query("UPDATE app_users SET username=$1,password_hash=$2,display_name=$3,email=$4,role=$5,enabled=$6,updated_at=NOW() WHERE id=$7")
+            .bind(input.username.trim())
+            .bind(hash)
+            .bind(input.display_name.trim())
+            .bind(input.email.trim())
+            .bind(&input.role)
+            .bind(input.enabled)
+            .bind(id)
+            .execute(&auth.pool)
+            .await
+            .map_err(db)?;
+    }
+
+    auth.sessions.lock().expect("sessions lock").retain(|_, session| session.user_id != id);
+    Ok(HttpResponse::NoContent().finish())
+}
+async fn delete_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i64>)->Result<HttpResponse,ApiError>{
+    auth.require_admin(&req)?;
+    let id = path.into_inner();
+
+    if auth.session(&req).is_some_and(|s| s.user_id == id) {
+        return Err(ApiError::bad_request("You cannot delete your own account"));
+    }
+
+    let role: Option<String> = sqlx::query_scalar("SELECT role FROM app_users WHERE id=$1")
+        .bind(id)
+        .fetch_optional(&auth.pool)
+        .await
+        .map_err(db)?;
+
+    if role.as_deref() == Some("admin") {
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM app_users WHERE role='admin' AND enabled=TRUE")
+            .fetch_one(&auth.pool)
+            .await
+            .map_err(db)?;
+        if count <= 1 {
+            return Err(ApiError::bad_request("At least one enabled administrator is required"));
+        }
+    }
+
+    sqlx::query("DELETE FROM app_users WHERE id=$1")
+        .bind(id)
+        .execute(&auth.pool)
+        .await
+        .map_err(db)?;
+
+    auth.sessions.lock().expect("sessions lock").retain(|_, session| session.user_id != id);
+    Ok(HttpResponse::NoContent().finish())
+}
 
 async fn get_preferences(req:HttpRequest,auth:web::Data<AuthState>)->Result<HttpResponse,ApiError>{let user_id=auth.require_user_id(&req)?;let row=sqlx::query("SELECT theme,favorite_projects FROM app_user_preferences WHERE user_id=$1").bind(user_id).fetch_optional(&auth.pool).await.map_err(db)?;let preferences=match row{Some(row)=>UserPreferences{theme:row.get("theme"),favorite_projects:row.get("favorite_projects")},None=>UserPreferences{theme:"light".into(),favorite_projects:serde_json::json!({})}};Ok(HttpResponse::Ok().insert_header(("Cache-Control","no-store")).json(preferences))}
 async fn save_theme(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<ThemePreference>)->Result<HttpResponse,ApiError>{let user_id=auth.require_user_id(&req)?;if !matches!(input.theme.as_str(),"light"|"dracula"){return Err(ApiError::bad_request("Theme must be light or dracula"))}sqlx::query("INSERT INTO app_user_preferences(user_id,theme) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET theme=EXCLUDED.theme,updated_at=NOW()").bind(user_id).bind(&input.theme).execute(&auth.pool).await.map_err(db)?;Ok(HttpResponse::NoContent().finish())}

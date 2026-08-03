@@ -42,7 +42,7 @@ impl PipelineAggregator {
 
         let mut result = self.get_schedules(group_id, projects).await?;
 
-        result.sort_unstable_by(|a, b| a.schedule.id.cmp(&b.schedule.id));
+        result.sort_unstable_by_key(|a| a.schedule.id);
 
         Ok(result)
     }

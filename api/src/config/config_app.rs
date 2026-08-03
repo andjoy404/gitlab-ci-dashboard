@@ -25,6 +25,7 @@ impl ApiConfig {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::from_file(&FileConfig::default())
     }
@@ -69,6 +70,7 @@ impl AppConfig {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::from_file(&FileConfig::default())
     }
