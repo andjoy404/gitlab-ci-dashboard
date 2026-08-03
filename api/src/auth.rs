@@ -151,9 +151,33 @@ async fn delete_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i6
 
 async fn get_preferences(req:HttpRequest,auth:web::Data<AuthState>)->Result<HttpResponse,ApiError>{let user_id=auth.require_user_id(&req)?;let row=sqlx::query("SELECT theme,favorite_projects FROM app_user_preferences WHERE user_id=$1").bind(user_id).fetch_optional(&auth.pool).await.map_err(db)?;let preferences=match row{Some(row)=>UserPreferences{theme:row.get("theme"),favorite_projects:row.get("favorite_projects")},None=>UserPreferences{theme:"light".into(),favorite_projects:serde_json::json!({})}};Ok(HttpResponse::Ok().insert_header(("Cache-Control","no-store")).json(preferences))}
 async fn save_theme(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<ThemePreference>)->Result<HttpResponse,ApiError>{let user_id=auth.require_user_id(&req)?;if !matches!(input.theme.as_str(),"light"|"dracula"){return Err(ApiError::bad_request("Theme must be light or dracula"))}sqlx::query("INSERT INTO app_user_preferences(user_id,theme) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET theme=EXCLUDED.theme,updated_at=NOW()").bind(user_id).bind(&input.theme).execute(&auth.pool).await.map_err(db)?;Ok(HttpResponse::NoContent().finish())}
-async fn save_favorites(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<FavoriteProjectsPreference>)->Result<HttpResponse,ApiError>{let user_id=auth.require_user_id(&req)?;if !input.favorite_projects.is_object(){return Err(ApiError::bad_request("Favorite projects must be an object"))}sqlx::query("INSERT INTO app_user_preferences(user_id,favorite_projects) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET favorite_projects=EXCLUDED.favorite_projects,updated_at=NOW()").bind(user_id).bind(&input.favorite_projects).execute(&auth.pool).await.map_err(db)?;Ok(HttpResponse::NoContent().finish())}
+async fn save_favorites(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<FavoriteProjectsPreference>)->Result<HttpResponse,ApiError>{
+    let user_id=auth.require_user_id(&req)?;
+    if !input.favorite_projects.is_object() {
+        return Err(ApiError::bad_request("Favorite projects must be an object"));
+    }
+    sqlx::query("INSERT INTO app_user_preferences(user_id,favorite_projects) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET favorite_projects=EXCLUDED.favorite_projects,updated_at=NOW()")
+        .bind(user_id)
+        .bind(&input.favorite_projects)
+        .execute(&auth.pool)
+        .await
+        .map_err(db)?;
+    Ok(HttpResponse::NoContent().finish())
+}
 
-fn validate(username:&str,role:&str,password:Option<&str>)->Result<(),ApiError>{if username.trim().is_empty(){return Err(ApiError::bad_request("Username is required"))}if !matches!(role,"admin"|"editor"){return Err(ApiError::bad_request("Role must be admin or editor"))}if password.is_some_and(|p|p.len()<8){return Err(ApiError::bad_request("Password must contain at least 8 characters"))}Ok(())}
+fn validate(username:&str,role:&str,password:Option<&str>)->Result<(),ApiError>{
+    if username.trim().is_empty() {
+        return Err(ApiError::bad_request("Username is required"));
+    }
+    if !matches!(role,"admin"|"editor") {
+        return Err(ApiError::bad_request("Role must be admin or editor"));
+    }
+    if password.is_some_and(|p|p.len()<8) {
+        return Err(ApiError::bad_request("Password must contain at least 8 characters"));
+    }
+    Ok(())
+}
+
 fn hash_password(value:&str)->Result<String,String>{let salt=SaltString::generate(&mut OsRng);Argon2::default().hash_password(value.as_bytes(),&salt).map(|v|v.to_string()).map_err(|e|e.to_string())}
 fn verify_password(value:&str,hash:&str)->bool{PasswordHash::new(hash).ok().is_some_and(|h|Argon2::default().verify_password(value.as_bytes(),&h).is_ok())}
 fn random_token()->String{rand::random::<[u8;32]>().iter().map(|b|format!("{b:02x}")).collect()}
