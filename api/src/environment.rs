@@ -38,7 +38,7 @@ impl EnvironmentStore {
     #[cfg(test)]
     pub fn test_instance() -> Self {
         // create a lazy pool that won't attempt connections during tests
-        let pool = sqlx::PgPool::connect_lazy("postgres://localhost/postgres");
+        let pool = sqlx::PgPool::connect_lazy("postgres://localhost/postgres").expect("create test database pool");
         // 64 hex chars (32 bytes) default key for tests
         let key = "0000000000000000000000000000000000000000000000000000000000000000";
         EnvironmentStore::new(pool, key).expect("create test environment store")
