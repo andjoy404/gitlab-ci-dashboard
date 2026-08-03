@@ -1,7 +1,6 @@
 # Gitlab CI Dashboard
 
-[![Docker Image Version](https://img.shields.io/docker/v/larscom/gitlab-ci-dashboard?sort=semver&label=latest%20release&color=blue)](https://hub.docker.com/r/larscom/gitlab-ci-dashboard)
-[![workflow](https://github.com/larscom/gitlab-ci-dashboard/actions/workflows/workflow.yml/badge.svg)](https://github.com/larscom/gitlab-ci-dashboard/actions/workflows/workflow.yml)
+[![workflow](https://github.com/andjoy404/gitlab-ci-dashboard/actions/workflows/workflow.yml/badge.svg)](https://github.com/andjoy404/gitlab-ci-dashboard/actions/workflows/workflow.yml)
 [![License MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Preview
@@ -26,7 +25,7 @@ The default functionality of Gitlab is limited at the project level. This can be
 of
 projects, potentially resulting in undetected failed pipelines.
 
-## 👉 [Demo](https://gitlab-ci-dashboard.larscom.nl)
+##
 
 <br />
 
@@ -177,7 +176,7 @@ Mount the runtime config inside the container (`/app/config.toml`):
 docker run \
   -p 8080:8080 \
   -v ./api/config.toml:/app/config.toml \
-  larscom/gitlab-ci-dashboard:latest
+  ghcr.io/andjoy404/gitlab-ci-dashboard:latest
 ```
 
 ## 📜 Custom CA certificate

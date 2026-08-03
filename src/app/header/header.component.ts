@@ -26,6 +26,6 @@ export class HeaderComponent {
   }
 
   onClick(): void {
-    window.open('https://github.com/larscom/gitlab-ci-dashboard', '_blank')
+    window.open('https://github.com/andjoy404/gitlab-ci-dashboard', '_blank')
   }
 }
