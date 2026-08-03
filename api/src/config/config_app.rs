@@ -1,5 +1,6 @@
 use crate::config::config_file::FileConfig;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::time::Duration;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -15,8 +16,9 @@ pub struct ApiConfig {
 
 impl ApiConfig {
     pub fn from_file(c: &FileConfig) -> Self {
+        let api_version = env::var("VERSION").unwrap_or_else(|_| option_env!("CARGO_PKG_VERSION").unwrap_or("dev").to_string());
         Self {
-            api_version: option_env!("CARGO_PKG_VERSION").unwrap_or("dev").to_string(),
+            api_version,
             read_only: c.ui.read_only, hide_write_actions: c.ui.hide_write_actions,
             page_size_options: c.ui.page_size_options.clone(), default_page_size: c.ui.default_page_size,
             analytics_retention_days: c.analytics.retention_days, pipeline_history_days: c.pipeline.history_days,
