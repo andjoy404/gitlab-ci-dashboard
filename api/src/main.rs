@@ -298,6 +298,10 @@ mod tests {
             let api_config = Data::new(ApiConfig::new());
             let auth_state = Data::new(auth::AuthState::for_test());
 
+            // test environment store and federated client
+            let environment_store = Data::new(environment::EnvironmentStore::test_instance());
+            let federated_client = Data::new(Arc::new(federated_gitlab::FederatedGitlabClient::new(vec![])));
+
             let group_service = Data::new(group::GroupService::new(
                 gitlab_client.clone(),
                 gcd_config.clone(),
@@ -349,6 +353,8 @@ mod tests {
             test::init_service(App::new().configure(configure_app(
                 api_config,
                 Data::new(analytics::AnalyticsStore::default()),
+                environment_store,
+                federated_client,
                 auth_state,
                 qs_config,
                 group_service,

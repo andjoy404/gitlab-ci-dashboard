@@ -34,6 +34,15 @@ impl EnvironmentStore {
         if key.len() != 32 { return Err("security.environment_token_encryption_key must contain exactly 64 hex characters".into()) }
         Ok(Self { pool, cipher: Aes256Gcm::new_from_slice(&key).map_err(|_| "invalid encryption key")? })
     }
+
+    #[cfg(test)]
+    pub fn test_instance() -> Self {
+        // create a lazy pool that won't attempt connections during tests
+        let pool = sqlx::PgPool::connect_lazy("postgres://localhost/postgres");
+        // 64 hex chars (32 bytes) default key for tests
+        let key = "0000000000000000000000000000000000000000000000000000000000000000";
+        EnvironmentStore::new(pool, key).expect("create test environment store")
+    }
     fn encrypt(&self, token: &str) -> Result<Vec<u8>, ApiError> {
         let mut nonce_bytes = [0u8; 12]; OsRng.fill_bytes(&mut nonce_bytes);
         let encrypted = self.cipher.encrypt(Nonce::from_slice(&nonce_bytes), token.as_bytes())

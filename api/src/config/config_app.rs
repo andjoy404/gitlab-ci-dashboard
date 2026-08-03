@@ -22,6 +22,10 @@ impl ApiConfig {
             analytics_retention_days: c.analytics.retention_days, pipeline_history_days: c.pipeline.history_days,
         }
     }
+
+    pub fn new() -> Self {
+        Self::from_file(&FileConfig::default())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -61,5 +65,9 @@ impl AppConfig {
             analytics_sync_interval: Duration::from_secs(c.analytics.sync_interval_seconds),
             analytics_retention_days: c.analytics.retention_days,
         }
+    }
+
+    pub fn new() -> Self {
+        Self::from_file(&FileConfig::default())
     }
 }
