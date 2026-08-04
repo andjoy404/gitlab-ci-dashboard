@@ -679,28 +679,28 @@ html.dracula-theme .ant-table-wrapper .ant-table-thead > tr > th {
 }
 
 .pipeline-status.status-success {
-  color: #047857;
+  color: #18d99a;
 }
 
 .pipeline-status.status-running,
 .pipeline-status.status-pending,
 .pipeline-status.status-preparing,
 .pipeline-status.status-created {
-  color: #1d4ed8;
+  color: #39a0ff;
 }
 
 .pipeline-status.status-manual,
 .pipeline-status.status-skipped {
-  color: #b45309;
+  color: #ffc21c;
 }
 
 .pipeline-status.status-scheduled {
-  color: #7c3aed;
+  color: #a970ff;
 }
 
 .pipeline-status.status-failed,
 .pipeline-status.status-canceled {
-  color: #dc2626;
+  color: #ff5267;
 }
 
 .dracula-theme {
@@ -731,28 +731,28 @@ html.dracula-theme .ant-table-wrapper .ant-table-thead > tr > th {
   }
 
   .pipeline-status.status-success {
-    color: #4ade80;
+    color: #18d99a;
   }
 
   .pipeline-status.status-running,
   .pipeline-status.status-pending,
   .pipeline-status.status-preparing,
   .pipeline-status.status-created {
-    color: #60a5fa;
+    color: #39a0ff;
   }
 
   .pipeline-status.status-manual,
   .pipeline-status.status-skipped {
-    color: #fbbf24;
+    color: #ffc21c;
   }
 
   .pipeline-status.status-scheduled {
-    color: #c4a7ff;
+    color: #a970ff;
   }
 
   .pipeline-status.status-failed,
   .pipeline-status.status-canceled {
-    color: #fb7185;
+    color: #ff8291;
   }
 }
 /* Arcane-style sidebar identity */
@@ -891,9 +891,28 @@ gcd-latest-pipelines {
 
 .dashboard-toolbar,
 .grafana-panel {
+  position: relative;
+  isolation: isolate;
   border: 1px solid var(--dashboard-border);
   background: var(--dashboard-surface);
   box-shadow: var(--dashboard-shadow);
+}
+
+.dashboard-grid.panel-waiting .dashboard-toolbar::after,
+.dashboard-grid.panel-waiting .grafana-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  backdrop-filter: blur(2.8px) saturate(0.86);
+  background: color-mix(in srgb, var(--dashboard-surface) 74%, transparent);
+}
+
+html.dracula-theme gcd-latest-pipelines .dashboard-grid.panel-waiting .dashboard-toolbar::after,
+html.dracula-theme gcd-latest-pipelines .dashboard-grid.panel-waiting .grafana-panel::after {
+  background: color-mix(in srgb, #0d1011 64%, transparent);
 }
 
 .dashboard-toolbar {
@@ -981,7 +1000,6 @@ gcd-latest-pipelines {
 }
 
 .grafana-panel {
-  position: relative;
   min-height: 190px;
   padding: 0.85rem 0.95rem;
   overflow: hidden;
@@ -2008,8 +2026,13 @@ html.dracula-theme .current-label { color:#c4a7ff; }
 
 /* Global configuration and environment form polish */
 .environment-toolbar > div:last-child { display:flex; align-items:center; gap:.75rem; }
-.global-config-card { max-width:680px; padding:1.25rem; color:#20242d; border:1px solid #dfe3e8; border-radius:10px; background:#fff; }
-.global-config-card > label,.global-config-card .logo-field { display:flex; flex-direction:column; margin-bottom:1rem; gap:.45rem; font-size:12px; font-weight:600; }
+.global-config-card { display:flex; flex-direction:column; max-width:680px; padding:1.25rem; color:#20242d; border:1px solid #dfe3e8; border-radius:10px; background:#fff; }
+.global-config-card > label,.global-config-card .logo-field,.global-config-card .pipeline-view-field { display:flex; flex-direction:column; margin-bottom:1rem; gap:.45rem; font-size:12px; font-weight:600; }
+.global-config-card .logo-field { order: 2; }
+.global-config-card .pipeline-view-field { order: 3; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.global-config-card .global-logo-preview,
+.global-config-card .setup-message,
+.global-config-card .form-actions { order: 4; }
 .global-config-card input { width:100%; padding:.65rem .75rem; color:#20242d; border:1px solid #d4d8df; border-radius:8px; outline:none; background:#fff; }
 .global-logo-preview { width:64px; height:64px; padding:4px; object-fit:contain; border:1px solid #dfe3e8; border-radius:10px; background:#fff; }
 .setup-message { margin-top:1rem; padding:.65rem .75rem; color:#16794c; border:1px solid rgb(32 199 122 / 35%); border-radius:8px; background:rgb(32 199 122 / 8%); }
@@ -2080,6 +2103,99 @@ html.dracula-theme .global-config-card .logo-modes button.active {
   cursor: pointer;
   gap: .75rem;
   transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.global-config-card .pipeline-view-field .field-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.global-config-card .field-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #586174;
+  border-radius: 100px;
+  cursor: help;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.global-config-card .field-help:hover {
+  color: #6d28d9;
+  background: rgba(109, 40, 217, 0.10);
+}
+
+.global-config-card .pipeline-view-options {
+  display: flex;
+  gap: 0;
+  padding: 4px;
+  border: 1px solid #d4d8df;
+  border-radius: 10px;
+  background: #f3f5f8;
+  overflow: hidden;
+}
+
+.global-config-card .pipeline-view-options label {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  margin: 0;
+  padding: 0.7rem 1rem;
+  gap: 0;
+  color: #596173;
+  border-radius: 7px;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.global-config-card .pipeline-view-options label input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.global-config-card .pipeline-view-options label span {
+  position: relative;
+  z-index: 1;
+}
+
+.global-config-card .pipeline-view-options label:has(input:checked) {
+  color: #6d28d9;
+  background: #e7def8;
+  box-shadow: inset 0 0 0 1px rgb(139 92 246 / 22%);
+}
+
+html.dracula-theme .global-config-card .field-help {
+  color: #d2baff;
+}
+
+html.dracula-theme .global-config-card .field-help:hover {
+  color: #f5d0fe;
+  background: rgba(196, 167, 255, 0.12);
+}
+
+html.dracula-theme .global-config-card .pipeline-view-options {
+  border-color: #34393d;
+  background: #111315;
+}
+
+html.dracula-theme .global-config-card .pipeline-view-options label {
+  color: #aeb4ba;
+}
+
+html.dracula-theme .global-config-card .pipeline-view-options label:has(input:checked) {
+  color: #c4a7ff;
+  background: #271a3a;
+  box-shadow: inset 0 0 0 1px rgb(196 167 255 / 18%);
 }
 
 .global-config-card .arcane-file-picker:hover,
@@ -2555,6 +2671,34 @@ html.dracula-theme .benchmark-panel .environment-page {
   box-shadow: none !important;
 }
 
+.analytics-waiting-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 48%, var(--dashboard-border));
+  border-radius: 10px;
+  color: var(--dashboard-text);
+  background: color-mix(in srgb, var(--dashboard-accent) 10%, var(--dashboard-surface));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--dashboard-accent) 20%, transparent),
+    0 0 10px color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
+}
+
+.analytics-waiting-notice .anticon {
+  color: var(--dashboard-accent);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--dashboard-accent) 44%, transparent));
+}
+
+html.dracula-theme .analytics-waiting-notice {
+  border-color: color-mix(in srgb, var(--dashboard-accent) 52%, #2f3437);
+  background: color-mix(in srgb, var(--dashboard-accent) 14%, #101415);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--dashboard-accent) 24%, transparent),
+    0 0 12px color-mix(in srgb, var(--dashboard-accent) 26%, transparent);
+}
+
 .benchmark-panel .data-workspace .ant-table-wrapper {
   overflow: hidden;
 }
@@ -3026,6 +3170,7 @@ html.dracula-theme .benchmark-panel .environment-page {
 /* Neon badge palette shared by every Dashboard visualization. */
 gcd-latest-pipelines {
   --dashboard-success: #18d99a;
+  --dashboard-manual: #ffc21c;
   --dashboard-danger: #ff5267;
   --dashboard-info: #39a0ff;
   --dashboard-waning: #ff9f2f;
@@ -3034,55 +3179,72 @@ gcd-latest-pipelines {
 gcd-latest-pipelines .bar-track {
   border: 1px solid var(--dashboard-border);
   background: color-mix(in srgb, var(--dashboard-gauge-track) 82%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--dashboard-border) 88%, transparent),
+    inset 0 0 16px color-mix(in srgb, var(--dashboard-accent) 10%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > i,
 gcd-latest-pipelines .pipeline-pie-legend i {
   border: 1px solid currentColor;
-  filter: saturate(1.15);
+  filter: saturate(1.35) brightness(1.1);
 }
 
 gcd-latest-pipelines .bar-track > .success-bg {
   color: var(--dashboard-success);
-  background: color-mix(in srgb, var(--dashboard-success) 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--dashboard-success) 28%, transparent);
+  background: color-mix(in srgb, var(--dashboard-success) 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--dashboard-success) 62%, transparent),
+    0 0 12px color-mix(in srgb, var(--dashboard-success) 44%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > .manual-bg {
   color: #ffc21c;
-  background: color-mix(in srgb, #ffc21c 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, #ffc21c 28%, transparent);
+  background: color-mix(in srgb, #ffc21c 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, #ffc21c 62%, transparent),
+    0 0 12px color-mix(in srgb, #ffc21c 44%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > .failure-bg {
   color: var(--dashboard-danger);
-  background: color-mix(in srgb, var(--dashboard-danger) 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--dashboard-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--dashboard-danger) 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--dashboard-danger) 62%, transparent),
+    0 0 12px color-mix(in srgb, var(--dashboard-danger) 44%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > .active-bg,
 gcd-latest-pipelines .bar-track > .runner-idle {
   color: var(--dashboard-info);
-  background: color-mix(in srgb, var(--dashboard-info) 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--dashboard-info) 28%, transparent);
+  background: color-mix(in srgb, var(--dashboard-info) 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--dashboard-info) 62%, transparent),
+    0 0 12px color-mix(in srgb, var(--dashboard-info) 44%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > .canceled-bg {
   color: var(--dashboard-waning);
-  background: color-mix(in srgb, var(--dashboard-waning) 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--dashboard-waning) 28%, transparent);
+  background: color-mix(in srgb, var(--dashboard-waning) 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--dashboard-waning) 62%, transparent),
+    0 0 12px color-mix(in srgb, var(--dashboard-waning) 44%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > .runner-running {
   color: var(--dashboard-success);
-  background: color-mix(in srgb, var(--dashboard-success) 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--dashboard-success) 28%, transparent);
+  background: color-mix(in srgb, var(--dashboard-success) 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--dashboard-success) 62%, transparent),
+    0 0 12px color-mix(in srgb, var(--dashboard-success) 44%, transparent);
 }
 
 gcd-latest-pipelines .bar-track > .runner-offline {
   color: #ff7590;
-  background: color-mix(in srgb, #ff7590 42%, transparent);
-  box-shadow: inset 0 0 10px color-mix(in srgb, #ff7590 28%, transparent);
+  background: color-mix(in srgb, #ff7590 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, #ff7590 62%, transparent),
+    0 0 12px color-mix(in srgb, #ff7590 44%, transparent);
 }
 
 gcd-latest-pipelines .gauge-value {
@@ -3097,7 +3259,7 @@ gcd-latest-pipelines .pipeline-pie {
   box-shadow:
     inset 0 0 16px color-mix(in srgb, var(--dashboard-accent) 28%, transparent),
     0 0 12px color-mix(in srgb, var(--dashboard-accent) 24%, transparent);
-  filter: saturate(1.2);
+  filter: saturate(1.22) brightness(0.9) contrast(1.06);
 }
 
 gcd-latest-pipelines .pipeline-pie-center {

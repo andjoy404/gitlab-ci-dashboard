@@ -1,4 +1,10 @@
 <div class="runner-page">
+  @if (readinessMessage()) {
+    <section class="analytics-waiting-notice" role="status" aria-live="polite">
+      <span nz-icon nzType="clock-circle"></span>
+      <span>{{ readinessMessage() }}</span>
+    </section>
+  }
   <section class="runner-summary">
     <div>
       <span>Total runners</span>
@@ -69,7 +75,10 @@
   </div>
 
   @if (loading()) {
-    <nz-spin />
+    <div class="soft-loading-state">
+      <nz-spin nzSize="large" />
+      <p>Loading runner data...</p>
+    </div>
   } @else if (runners().length === 0) {
     <section class="runner-empty-state">
       <span nz-icon nzType="safety-certificate"></span>

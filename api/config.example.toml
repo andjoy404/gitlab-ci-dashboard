@@ -9,11 +9,6 @@ worker_count = 4
 [security]
 environment_token_encryption_key = "your-32-byte-hex-key-here"
 
-[authentication]
-username = "admin"
-password = "password"
-secure_cookie = false
-
 [database]
 url = "postgres://gitlab_ci_dashboard:gitlab_ci_dashboard@postgres:5432/gitlab_ci_dashboard"
 max_connections = 10

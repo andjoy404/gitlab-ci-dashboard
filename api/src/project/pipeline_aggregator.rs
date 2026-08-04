@@ -110,7 +110,7 @@ impl PipelineAggregator {
             let pipelines = if project.default_branch.is_some() && project.jobs_enabled {
                 match self
                     .pipeline_service
-                    .get_newest_pipelines_by_branch(project.id, refresh)
+                    .get_recent_pipelines(project.id, refresh)
                     .await
                 {
                     Ok(pipelines) => pipelines,

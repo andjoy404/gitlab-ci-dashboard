@@ -50,6 +50,12 @@ impl ApiError {
             .unwrap_or(false)
     }
 
+    pub fn is_unauthorized(&self) -> bool {
+        StatusCode::from_u16(self.status_code)
+            .map(|s| s == StatusCode::UNAUTHORIZED)
+            .unwrap_or(false)
+    }
+
     pub fn is_too_many_requests(&self) -> bool {
         StatusCode::from_u16(self.status_code)
             .map(|s| s == StatusCode::TOO_MANY_REQUESTS)

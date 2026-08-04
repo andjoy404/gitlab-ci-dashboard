@@ -5,7 +5,9 @@ import { ScheduleProjectPipeline } from '$groups/model/schedule'
 import { ErrorService } from '$service/error.service'
 import { HttpClient, HttpErrorResponse } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core'
-import { Observable, catchError, of, retry } from 'rxjs'
+import { Observable, catchError, of, retry, timeout } from 'rxjs'
+
+const REQUEST_TIMEOUT_MS = 20_000
 
 @Injectable({ providedIn: 'root' })
 export class ScheduleService {
@@ -17,6 +19,7 @@ export class ScheduleService {
     const params = createParams(groupId, projectIds)
 
     return this.http.get<ScheduleProjectPipeline[]>(url, { params }).pipe(
+      timeout(REQUEST_TIMEOUT_MS),
       retry(retryConfig),
       catchError(({ status, error }: HttpErrorResponse) => {
         this.errorService.setError({

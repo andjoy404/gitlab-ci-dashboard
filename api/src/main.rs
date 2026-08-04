@@ -207,13 +207,25 @@ fn configure_app(
                             .app_data::<Data<auth::AuthState>>()
                             .map(|auth| auth.is_authenticated(request.request()))
                             .unwrap_or(false);
+                        let must_change_password = request
+                            .app_data::<Data<auth::AuthState>>()
+                            .map(|auth| auth.requires_password_change(request.request()))
+                            .unwrap_or(false);
 
-                        if authenticated {
+                        if authenticated && !must_change_password {
                             Either::Left(
                                 service
                                     .call(request)
                                     .map(|response| response.map(|response| response.map_into_left_body())),
                             )
+                        } else if must_change_password {
+                            let response = HttpResponse::Forbidden().json(serde_json::json!({
+                                "message": "Password update required",
+                                "code": "PASSWORD_CHANGE_REQUIRED"
+                            }));
+                            Either::Right(ready(Ok(
+                                request.into_response(response).map_into_right_body()
+                            )))
                         } else {
                             let response = HttpResponse::Unauthorized()
                                 .json(serde_json::json!({ "message": "Authentication required" }));
@@ -482,6 +494,10 @@ mod tests {
 
         async fn artifact(&self, _project_id: u64, _job_id: u64) -> Result<Bytes, ApiError> {
             Ok(Bytes::from("hello".to_string()))
+        }
+
+        async fn current_user(&self) -> Result<model::User, ApiError> {
+            Ok(model::test::new_user())
         }
     }
 

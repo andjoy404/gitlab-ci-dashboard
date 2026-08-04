@@ -1,7 +1,7 @@
 use crate::error::ApiError;
 use crate::model::Project;
 use crate::model::Schedule;
-use crate::model::{Branch, Bridge, Group, Job, Runner, RunnerJob, RunnerManager};
+use crate::model::{Branch, Bridge, Group, Job, Runner, RunnerJob, RunnerManager, User};
 use crate::model::{JobStatus, Pipeline};
 use actix_web::web::Bytes;
 use async_trait::async_trait;
@@ -86,6 +86,8 @@ pub trait GitlabApi: Send + Sync {
     ) -> Result<Vec<Bridge>, ApiError>;
 
     async fn artifact(&self, project_id: u64, job_id: u64) -> Result<Bytes, ApiError>;
+
+    async fn current_user(&self) -> Result<User, ApiError>;
 }
 
 #[derive(Clone)]
@@ -567,6 +569,10 @@ impl GitlabApi for GitlabClient {
         let params = [];
         let path = format!("/projects/{project_id}/jobs/{job_id}/artifacts");
         Ok(self.do_get(path, params.to_vec()).await?.bytes().await?)
+    }
+
+    async fn current_user(&self) -> Result<User, ApiError> {
+        self.do_get_parsed("/user".to_string(), Vec::new()).await
     }
 }
 

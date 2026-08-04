@@ -126,18 +126,26 @@ impl PipelineService {
         project_id: u64,
         refresh: bool,
     ) -> Result<Vec<Pipeline>, ApiError> {
+        self.get_recent_pipelines(project_id, refresh)
+            .await
+            .map(latest_by_branch)
+    }
+
+    pub async fn get_recent_pipelines(
+        &self,
+        project_id: u64,
+        refresh: bool,
+    ) -> Result<Vec<Pipeline>, ApiError> {
         if refresh {
             self.cache_all.invalidate(&project_id).await;
         } else if let Some(pipelines) = self.cache_all.get(&project_id).await {
             if !pipelines.iter().any(|pipeline| is_active(&pipeline.status)) {
-                return Ok(latest_by_branch(pipelines));
+                return Ok(pipelines);
             }
             self.cache_all.invalidate(&project_id).await;
         }
 
-        self.get_pipelines(project_id, None)
-            .await
-            .map(latest_by_branch)
+        self.get_pipelines(project_id, None).await
     }
 }
 

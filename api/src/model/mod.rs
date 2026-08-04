@@ -6,6 +6,7 @@ pub use pipeline::*;
 pub use project::*;
 pub use runner::*;
 pub use schedule::*;
+pub use user::*;
 
 pub mod pipeline;
 pub mod project;

@@ -165,6 +165,9 @@ async fn synchronize(
             .bind(retention_days as i32).execute(pool).await?;
         sqlx::query("DELETE FROM analytics_runner_snapshots WHERE captured_at < NOW() - make_interval(days => $1)")
             .bind(retention_days as i32).execute(pool).await?;
+        sqlx::query("DELETE FROM analytics_summary_cache WHERE computed_at < NOW() - make_interval(days => 7)")
+            .execute(pool)
+            .await?;
     }
     store.sync_state(None, true).await?;
     Ok(())

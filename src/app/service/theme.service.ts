@@ -1,9 +1,11 @@
 import { HttpClient } from '@angular/common/http'
 import { Injectable, effect, inject, signal } from '@angular/core'
 import { AuthService } from './auth.service'
+import { catchError, of } from 'rxjs'
 
 const STORAGE_KEY = 'theme'
 const DRACULA_THEME = 'dracula'
+const LIGHT_THEME = 'light'
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -18,10 +20,23 @@ export class ThemeService {
       const username = this.auth.authenticated() ? this.auth.username() : ''
       if (!username || username === this.loadedUser) return
       this.loadedUser = username
-      this.http.get<{theme:'light'|'dracula'}>('api/preferences').subscribe(({theme}) => {
-        this.isDracula.set(theme === DRACULA_THEME)
+      this.http
+        .get<{ theme: 'light' | 'dracula' }>('api/preferences')
+        .pipe(catchError(() => of({ theme: this.isDracula() ? DRACULA_THEME : LIGHT_THEME })))
+        .subscribe(({ theme }) => {
+        const localTheme = this.getSavedTheme()
+        const preserveLocalDark = localTheme === DRACULA_THEME && theme === LIGHT_THEME
+        const selectedTheme = preserveLocalDark ? DRACULA_THEME : theme
+
+        this.isDracula.set(selectedTheme === DRACULA_THEME)
         this.saveLocalTheme()
         this.applyTheme()
+
+        // If server has default light but local preference is dark, persist dark
+        // so subsequent refreshes stay consistent for this user.
+        if (preserveLocalDark && this.auth.authenticated()) {
+          this.http.put('api/preferences/theme', { theme: DRACULA_THEME }).subscribe()
+        }
       })
     })
   }

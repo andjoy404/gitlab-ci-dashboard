@@ -3,11 +3,78 @@
   <div class="auth-loading"><nz-spin nzSize="large" /></div>
 } @else if (!auth.authenticated()) {
   <gcd-login />
+} @else if (auth.mustChangePassword()) {
+  <div class="password-gate-backdrop"></div>
+  <aside class="password-gate-modal" role="alert" aria-live="polite">
+    <header>
+      <span class="password-gate-kicker"><span nz-icon nzType="safety-certificate"></span> Security required</span>
+      <h2 class="password-gate-title">Update your password</h2>
+      <p class="password-gate-description"><span>For security</span>, update the default administrator password before continuing.</p>
+    </header>
+
+    <label>
+      <span class="password-field-label">Current password</span>
+      <div class="password-input-row">
+        <input nz-input [type]="showCurrentPassword() ? 'text' : 'password'" [ngModel]="currentPassword()" (ngModelChange)="currentPassword.set($event)" autocomplete="current-password" />
+        <button
+          type="button"
+          class="password-visibility-toggle"
+          [attr.aria-label]="showCurrentPassword() ? 'Hide current password' : 'Show current password'"
+          (click)="toggleCurrentPasswordVisibility()"
+        >
+          <span nz-icon [nzType]="showCurrentPassword() ? 'eye-invisible' : 'eye'"></span>
+        </button>
+      </div>
+    </label>
+
+    <label>
+      <span class="password-field-label">New password</span>
+      <div class="password-input-row">
+        <input nz-input [type]="showNewPassword() ? 'text' : 'password'" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" autocomplete="new-password" />
+        <button
+          type="button"
+          class="password-visibility-toggle"
+          [attr.aria-label]="showNewPassword() ? 'Hide new password' : 'Show new password'"
+          (click)="toggleNewPasswordVisibility()"
+        >
+          <span nz-icon [nzType]="showNewPassword() ? 'eye-invisible' : 'eye'"></span>
+        </button>
+      </div>
+    </label>
+
+    <label>
+      <span class="password-field-label">Confirm new password</span>
+      <div class="password-input-row">
+        <input nz-input [type]="showConfirmPassword() ? 'text' : 'password'" [ngModel]="confirmPassword()" (ngModelChange)="confirmPassword.set($event)" autocomplete="new-password" />
+        <button
+          type="button"
+          class="password-visibility-toggle"
+          [attr.aria-label]="showConfirmPassword() ? 'Hide confirmation password' : 'Show confirmation password'"
+          (click)="toggleConfirmPasswordVisibility()"
+        >
+          <span nz-icon [nzType]="showConfirmPassword() ? 'eye-invisible' : 'eye'"></span>
+        </button>
+      </div>
+    </label>
+
+    @if (passwordsMismatch()) {
+      <div class="password-gate-warning">New password and confirmation do not match yet.</div>
+    }
+
+    @if (passwordError()) {
+      <div class="password-gate-error">{{ passwordError() }}</div>
+    }
+
+    <footer>
+      <small class="password-gate-note">Use at least 8 characters.</small>
+      <button class="password-gate-save" nz-button nzType="primary" [nzLoading]="passwordSaving()" [disabled]="passwordsMismatch()" (click)="updatePassword()"><span>Save password</span></button>
+    </footer>
+  </aside>
 } @else if (error(); as error) {
   <div class="alert">
     <nz-alert nzShowIcon nzType="error" [nzMessage]="title()" [nzDescription]="message()" [nzAction]="action" />
     <ng-template #action>
-      <button nz-button nzSize="small" nzType="default" (click)="onClick()" nzDanger>Refresh</button>
+      <button nz-button nzSize="small" nzType="default" (click)="onClick()" nzDanger>{{ actionLabel() }}</button>
     </ng-template>
   </div>
 } @else {

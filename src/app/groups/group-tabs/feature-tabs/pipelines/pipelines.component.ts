@@ -1,12 +1,14 @@
 import { FETCH_REFRESH_INTERVAL } from '$groups/http'
 import { GroupId } from '$groups/model/group'
-import { PipelineId } from '$groups/model/pipeline'
+import { Pipeline, PipelineId } from '$groups/model/pipeline'
 import { ProjectId, ProjectPipeline, ProjectPipelines } from '$groups/model/project'
 import { Status } from '$groups/model/status'
 import { filterArrayNotNull, filterPipeline, filterProject, filterString } from '$groups/util/filter'
 import { forkJoinFlatten } from '$groups/util/fork'
 import { projectNamespacePath } from '$groups/util/project-path'
 import { AnalyticsRangeService } from '$service/analytics-range.service'
+import { ConfigService } from '$service/config.service'
+import { AnalyticsReadiness, AnalyticsReadinessService } from '../service/analytics-readiness.service'
 
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, input, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
@@ -48,9 +50,13 @@ import { FavoriteService } from '../../favorites/favorite.service'
 })
 export class PipelinesComponent implements OnInit {
   private pipelinesService = inject(PipelinesService)
+  private readinessService = inject(AnalyticsReadinessService)
+  private config = inject(ConfigService)
   readonly range = inject(AnalyticsRangeService)
   private destroyRef = inject(DestroyRef)
   private favoriteService = inject(FavoriteService)
+  private loadedReadinessKey = ''
+  private allViewHydratedKey = ''
 
   groupMap = input.required<Map<GroupId, Set<ProjectId>>>()
   favoritesMode = input(false)
@@ -61,6 +67,7 @@ export class PipelinesComponent implements OnInit {
   filterTopics = signal<string[]>([])
   filterStatuses = signal<Status[]>([])
   effectiveStatuses = signal<ReadonlyMap<PipelineId, Status>>(new Map())
+  pipelineView = computed(() => this.config.pipelineView())
   favoriteProjectSelection = signal<Set<ProjectId>|null>(null)
   favoriteBranchSelection = signal<Set<string>|null>(null)
   favoriteProjectSearch = signal('')
@@ -69,12 +76,34 @@ export class PipelinesComponent implements OnInit {
   projectPipelines = signal<ProjectPipelines[]>([])
   loading = signal(false)
   refreshing = signal(false)
+  readiness = signal<AnalyticsReadiness | undefined>(undefined)
+  hasPipelineData = computed(() => this.projectPipelines().some(({ pipelines }) => pipelines.length > 0))
+  waitingForData = computed(() => {
+    if (this.favoritesMode()) return false
+    return !this.hasPipelineData()
+  })
+  readinessMessage = computed(() => {
+    if (this.favoritesMode()) return ''
+    if (!this.hasPipelineData()) {
+      const readiness = this.readiness()
+      if (readiness?.message) {
+        return readiness.message
+      }
+      return 'Collecting analytics for first-time setup. Data will appear automatically.'
+    }
+
+    return ''
+  })
+  showLoadingState = computed(
+    () => !this.favoritesMode() && !this.hasPipelineData()
+  )
 
   statusCounts = computed<ReadonlyMap<Status, number>>(() => {
     const counts = new Map<Status, number>()
+    const pipelineView = this.pipelineView()
 
     for (const { pipelines } of this.projectPipelines()) {
-      for (const pipeline of pipelines) {
+      for (const pipeline of this.latestPipelinesByBranch(pipelines, pipelineView)) {
         const status = this.effectiveStatuses().get(pipeline.id) ?? pipeline.status
         counts.set(status, (counts.get(status) ?? 0) + 1)
       }
@@ -84,9 +113,11 @@ export class PipelinesComponent implements OnInit {
   })
 
   filteredProjectPipelines = computed(() => {
+    const pipelineView = this.pipelineView()
+
     return this.projectPipelines()
       .flatMap(({ project, pipelines, group_id }) =>
-        pipelines.map((pipeline) => ({
+        this.latestPipelinesByBranch(pipelines, pipelineView).map((pipeline) => ({
           project,
           pipeline: {
             ...pipeline,
@@ -108,6 +139,23 @@ export class PipelinesComponent implements OnInit {
       .sort((a, b) => this.sortByUpdatedAt(a, b))
   })
 
+  private latestPipelinesByBranch(pipelines: Pipeline[], pipelineView: 'all' | 'latest'): Pipeline[] {
+    if (pipelineView === 'all') {
+      return pipelines
+    }
+
+    const latest = new Map<string, Pipeline>()
+
+    for (const pipeline of pipelines) {
+      const current = latest.get(pipeline.ref)
+      if (!current || new Date(pipeline.updated_at).getTime() > new Date(current.updated_at).getTime()) {
+        latest.set(pipeline.ref, pipeline)
+      }
+    }
+
+    return Array.from(latest.values())
+  }
+
   projects = computed(() => {
     return this.projectPipelines()
       .filter(({ pipelines }) => this.favoritesMode() || pipelines.length > 0)
@@ -125,11 +173,39 @@ export class PipelinesComponent implements OnInit {
 
   constructor() {
     effect((onCleanup) => {
-      this.groupMap()
+      const groupIds = [...this.groupMap().keys()]
+      const readinessKey = groupIds.join(',')
+      if (readinessKey !== this.loadedReadinessKey) {
+        this.loadedReadinessKey = readinessKey
+        this.refreshReadiness(groupIds)
+      }
       this.range.hours()
       const request = this.loadPipelines(false, this.loading)
 
       onCleanup(() => request.unsubscribe())
+    })
+
+    effect(() => {
+      if (this.favoritesMode()) {
+        return
+      }
+
+      if (this.pipelineView() !== 'all') {
+        return
+      }
+
+      if (this.loading() || this.refreshing()) {
+        return
+      }
+
+      const groupIds = [...this.groupMap().keys()].sort((a, b) => a - b)
+      const hydrationKey = `${this.range.hours()}:${groupIds.join(',')}`
+      if (hydrationKey === this.allViewHydratedKey) {
+        return
+      }
+
+      this.allViewHydratedKey = hydrationKey
+      this.loadPipelines(true, this.refreshing)
     })
   }
 
@@ -144,7 +220,10 @@ export class PipelinesComponent implements OnInit {
         )
       )
 
-      .subscribe((projectPipelines) => this.projectPipelines.set(projectPipelines))
+      .subscribe((projectPipelines) => {
+        this.projectPipelines.set(projectPipelines)
+        this.refreshReadiness([...this.groupMap().keys()])
+      })
   }
 
   onRangeChange(value: number): void {
@@ -210,6 +289,15 @@ export class PipelinesComponent implements OnInit {
       return 0
     }
     return new Date(b.pipeline.updated_at).getTime() - new Date(a.pipeline.updated_at).getTime()
+  }
+
+  private refreshReadiness(groupIds: GroupId[]): void {
+    this.readinessService
+      .getReadiness(groupIds)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((readiness) => {
+        this.readiness.set(readiness)
+      })
   }
 
 }

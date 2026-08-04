@@ -1,5 +1,11 @@
 <div class="pipeline-page flex flex-col gap-1">
-  @if (!favoritesMode()) { <gcd-pipeline-summary [statusCounts]="statusCounts()" /> }
+  @if (readinessMessage()) {
+    <section class="analytics-waiting-notice" role="status" aria-live="polite">
+      <span nz-icon nzType="clock-circle"></span>
+      <span>{{ readinessMessage() }}</span>
+    </section>
+  }
+  @if (!favoritesMode()) { <gcd-pipeline-summary [statusCounts]="statusCounts()" [loading]="showLoadingState()" /> }
   @if(!favoritesMode()){
     <div class="workspace-status-filter"><gcd-status-filter [statusCounts]="statusCounts()" [filterStatuses]="filterStatuses()" (filterStatusesChange)="onFilterStatusesChanged($event)" /></div>
   }
@@ -76,7 +82,7 @@
       class="refresh-button"
       nz-button
       nz-tooltip
-      nzTooltipTitle="Refresh the newest pipeline for every branch"
+      nzTooltipTitle="Refresh pipeline history data"
       [disabled]="refreshing()"
       (click)="onRefresh()"
     >
@@ -85,8 +91,11 @@
     </button>
     </div>
   </div>
-  @if (loading()) {
-    <nz-spin />
+  @if (showLoadingState()) {
+    <div class="soft-loading-state">
+      <nz-spin nzSize="large" />
+      <p>Loading pipeline data...</p>
+    </div>
   } @else {
     <gcd-pipeline-table
       [projectPipelines]="filteredProjectPipelines()"

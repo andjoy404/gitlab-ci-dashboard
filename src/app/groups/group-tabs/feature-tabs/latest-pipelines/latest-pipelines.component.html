@@ -1,5 +1,11 @@
+@if (readinessMessage()) {
+  <section class="analytics-waiting-notice" role="status" aria-live="polite">
+    <span nz-icon nzType="clock-circle"></span>
+    <span>{{ readinessMessage() }}</span>
+  </section>
+}
 @if (analytics(); as summary) {
-<div class="dashboard-grid">
+<div class="dashboard-grid" [class.panel-waiting]="showPanelWaitingOverlay()">
   <section class="dashboard-toolbar panel-span-full">
     <div>
       <span class="eyebrow">Pipeline observability</span>

@@ -66,6 +66,24 @@ label {
   font-weight: 600;
 }
 
+.login-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6a7080;
+  cursor: pointer;
+}
+
+.login-password-toggle:hover,
+.login-password-toggle:focus-visible {
+  color: #7652c7;
+}
+
 .login-error {
   color: #cf3340;
   font-size: var(--font-size-small);
@@ -106,5 +124,14 @@ button {
   .login-theme-toggle:focus {
     color: #f4f4f5;
     background: #181c1e;
+  }
+
+  .login-password-toggle {
+    color: #b4b8bc;
+  }
+
+  .login-password-toggle:hover,
+  .login-password-toggle:focus-visible {
+    color: #f4f4f5;
   }
 }

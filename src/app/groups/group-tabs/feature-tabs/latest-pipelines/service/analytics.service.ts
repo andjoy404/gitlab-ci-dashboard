@@ -1,7 +1,9 @@
 import { GroupId } from '$groups/model/group'
 import { HttpClient } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core'
-import { Observable, catchError, of } from 'rxjs'
+import { Observable, catchError, of, timeout } from 'rxjs'
+
+const REQUEST_TIMEOUT_MS = 20_000
 
 export interface AnalyticsSummary {
   window_days: number
@@ -31,14 +33,16 @@ export interface AnalyticsHistoryPoint {
 export class AnalyticsService {
   private http = inject(HttpClient)
 
-  getSummary(groupIds: GroupId[], hours = 24): Observable<AnalyticsSummary | undefined> {
+  getSummary(groupIds: GroupId[], hours = 24, pipelineView: 'all' | 'latest' = 'all'): Observable<AnalyticsSummary | undefined> {
     return this.http
       .get<AnalyticsSummary>('api/analytics/summary', {
         params: {
           group_ids: groupIds.join(','),
-          hours: String(hours)
+          hours: String(hours),
+          pipeline_view: pipelineView
         }
       })
+      .pipe(timeout(REQUEST_TIMEOUT_MS))
       .pipe(catchError(() => of(undefined)))
   }
 }

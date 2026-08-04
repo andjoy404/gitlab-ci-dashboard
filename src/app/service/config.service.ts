@@ -17,14 +17,20 @@ export interface BrandingConfig {
   company_logo: string
 }
 
+export interface GlobalConfig extends BrandingConfig {
+  pipeline_view: 'all' | 'latest'
+}
+
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   private readonly http = inject(HttpClient)
   private readonly config = signal<ApiConfig | undefined>(undefined)
   private readonly branding = signal<BrandingConfig>({ company_name: 'GitLab CI Dashboard', company_logo: '' })
+  private readonly pipelineViewSignal = signal<'all' | 'latest'>('all')
 
   readonly companyName = computed(() => this.branding().company_name)
   readonly companyLogo = computed(() => this.branding().company_logo)
+  readonly pipelineView = computed(() => this.pipelineViewSignal())
 
   readonly version = computed(() => {
     const version = this.config()?.api_version ?? ''
@@ -42,14 +48,26 @@ export class ConfigService {
   load(): void {
     forkJoin({
       config: this.http.get<ApiConfig>('api/config').pipe(catchError(() => of(undefined))),
-      branding: this.http.get<BrandingConfig>('api/global-config').pipe(catchError(() => of(undefined)))
+      branding: this.http.get<GlobalConfig>('api/global-config').pipe(catchError(() => of(undefined)))
     }).subscribe(({ config, branding }) => {
       if (config) this.config.set(config)
-      if (branding) this.branding.set(branding)
+      if (branding) {
+        this.branding.set({ company_name: branding.company_name, company_logo: branding.company_logo })
+        this.pipelineViewSignal.set(branding.pipeline_view ?? 'all')
+      }
     })
   }
 
   setBranding(branding: BrandingConfig): void {
     this.branding.set(branding)
+  }
+
+  setPipelineView(pipelineView: 'all' | 'latest'): void {
+    this.pipelineViewSignal.set(pipelineView)
+  }
+
+  setGlobalConfig(globalConfig: GlobalConfig): void {
+    this.branding.set({ company_name: globalConfig.company_name, company_logo: globalConfig.company_logo })
+    this.pipelineViewSignal.set(globalConfig.pipeline_view ?? 'all')
   }
 }

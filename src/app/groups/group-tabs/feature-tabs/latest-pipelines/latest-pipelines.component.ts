@@ -2,6 +2,8 @@ import { FETCH_REFRESH_INTERVAL } from '$groups/http'
 import { GroupId } from '$groups/model/group'
 import { ProjectId } from '$groups/model/project'
 import { AnalyticsRangeService } from '$service/analytics-range.service'
+import { ConfigService } from '$service/config.service'
+import { AnalyticsReadiness, AnalyticsReadinessService } from '../service/analytics-readiness.service'
 
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, input, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
@@ -21,14 +23,62 @@ import { AnalyticsService, AnalyticsSummary } from './service/analytics.service'
 })
 export class LatestPipelinesComponent implements OnInit {
   private analyticsService = inject(AnalyticsService)
+  private readinessService = inject(AnalyticsReadinessService)
+  private config = inject(ConfigService)
   readonly range = inject(AnalyticsRangeService)
   private destroyRef = inject(DestroyRef)
   private loadedGroupKey = ''
+  private loadedSummaryKey = ''
+  private loadedReadinessKey = ''
   private expandedEmptyRange = false
 
   groupMap = input.required<Map<GroupId, Set<ProjectId>>>()
   analytics = signal<AnalyticsSummary | undefined>(undefined)
+  readiness = signal<AnalyticsReadiness | undefined>(undefined)
+  readinessMessage = computed(() => {
+    const readiness = this.readiness()
+    if (!readiness) return ''
+
+    const summary = this.analytics()
+    const pipelineDataMissing = !summary || summary.pipeline_count === 0
+    if (!pipelineDataMissing) {
+      return ''
+    }
+
+    if (!readiness.ready && readiness.message) {
+      return readiness.message
+    }
+
+    return 'Collecting analytics for first-time setup. Data will appear automatically.'
+  })
+  showPanelWaitingOverlay = computed(() => {
+    const readiness = this.readiness()
+    if (!readiness) return false
+
+    const summary = this.analytics()
+    return !summary || summary.pipeline_count === 0
+  })
   statusTooltip = signal<{ text: string; x: number; y: number } | null>(null)
+
+  private emptySummary(hours: number): AnalyticsSummary {
+    return {
+      window_days: Math.max(1, Math.ceil(hours / 24)),
+      window_hours: hours,
+      project_count: 0,
+      pipeline_count: 0,
+      success_count: 0,
+      failed_count: 0,
+      manual_count: 0,
+      active_count: 0,
+      canceled_count: 0,
+      runner_count: 0,
+      runner_running_count: 0,
+      runner_idle_count: 0,
+      runner_offline_count: 0,
+      history: [],
+      success_rate: 0
+    }
+  }
 
   failureRate = computed(() => {
     const summary = this.analytics()
@@ -48,11 +98,11 @@ export class LatestPipelinesComponent implements OnInit {
     const canceled = Math.min(100, active + this.percentage(summary.canceled_count))
 
     return `conic-gradient(
-      color-mix(in srgb, var(--dashboard-success) 48%, transparent) 0 ${success}%,
-      color-mix(in srgb, #ffc21c 48%, transparent) ${success}% ${manual}%,
-      color-mix(in srgb, var(--dashboard-danger) 48%, transparent) ${manual}% ${failed}%,
-      color-mix(in srgb, var(--dashboard-info) 48%, transparent) ${failed}% ${active}%,
-      color-mix(in srgb, var(--dashboard-waning) 48%, transparent) ${active}% ${canceled}%,
+      var(--dashboard-success) 0 ${success}%,
+      var(--dashboard-manual) ${success}% ${manual}%,
+      var(--dashboard-danger) ${manual}% ${failed}%,
+      var(--dashboard-info) ${failed}% ${active}%,
+      var(--dashboard-waning) ${active}% ${canceled}%,
       var(--dashboard-gauge-track) ${canceled}% 100%
     )`
   })
@@ -65,10 +115,20 @@ export class LatestPipelinesComponent implements OnInit {
         this.loadedGroupKey = groupKey
         this.expandedEmptyRange = false
       }
+      if (groupKey !== this.loadedReadinessKey) {
+        this.loadedReadinessKey = groupKey
+        this.refreshReadiness(groupIds)
+      }
       const hours = this.range.hours()
+      const pipelineView = this.config.pipelineView()
+      const summaryKey = `${groupKey}|${hours}|${pipelineView}`
+      if (summaryKey === this.loadedSummaryKey) {
+        return
+      }
+      this.loadedSummaryKey = summaryKey
       const request = this.analyticsService
-        .getSummary(groupIds, hours)
-        .subscribe((summary) => this.applySummary(summary))
+        .getSummary(groupIds, hours, pipelineView)
+        .subscribe((summary) => this.applySummary(summary ?? this.emptySummary(hours)))
 
       onCleanup(() => request.unsubscribe())
     })
@@ -77,7 +137,10 @@ export class LatestPipelinesComponent implements OnInit {
   ngOnInit(): void {
     interval(FETCH_REFRESH_INTERVAL)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadAnalytics())
+      .subscribe(() => {
+        this.loadAnalytics()
+        this.refreshReadiness([...this.groupMap().keys()])
+      })
   }
 
   percentage(value: number): number {
@@ -133,10 +196,11 @@ export class LatestPipelinesComponent implements OnInit {
     this.range.set(value)
   }
   private loadAnalytics(): void {
+    const hours = this.range.hours()
     this.analyticsService
-      .getSummary([...this.groupMap().keys()], this.range.hours())
+      .getSummary([...this.groupMap().keys()], hours, this.config.pipelineView())
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((summary) => this.applySummary(summary))
+      .subscribe((summary) => this.applySummary(summary ?? this.emptySummary(hours)))
   }
 
   private applySummary(summary: AnalyticsSummary | undefined): void {
@@ -151,5 +215,14 @@ export class LatestPipelinesComponent implements OnInit {
       this.expandedEmptyRange = true
       this.range.set(this.range.maximumHours())
     }
+  }
+
+  private refreshReadiness(groupIds: GroupId[]): void {
+    this.readinessService
+      .getReadiness(groupIds)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((readiness) => {
+        this.readiness.set(readiness)
+      })
   }
 }

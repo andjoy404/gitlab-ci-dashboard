@@ -4,18 +4,18 @@ type Color = string
 
 const dark6 = '#25262B'
 const colorMap = new Map<Status | string, Color>([
-  [Status.CREATED, '#74C0FC'],
-  [Status.WAITING_FOR_RESOURCE, '#CED4DA'],
-  [Status.PREPARING, '#4C6EF5'],
-  [Status.PENDING, '#15AABF'],
-  [Status.RUNNING, '#228BE6'],
-  [Status.SUCCESS, '#087F5B'],
-  [Status.FAILED, '#FA5252'],
-  [Status.CANCELED, '#FF8787'],
-  [Status.SKIPPED, '#FD7E14'],
-  [Status.MANUAL, '#FAB005'],
-  [Status.SCHEDULED, '#7950F2'],
-  [Status.FAILED_ALLOW_FAILURE, 'warning']
+  [Status.CREATED, '#39A0FF'],
+  [Status.WAITING_FOR_RESOURCE, '#9AA3AD'],
+  [Status.PREPARING, '#39A0FF'],
+  [Status.PENDING, '#39A0FF'],
+  [Status.RUNNING, '#39A0FF'],
+  [Status.SUCCESS, '#18D99A'],
+  [Status.FAILED, '#FF5267'],
+  [Status.CANCELED, '#FF8291'],
+  [Status.SKIPPED, '#FF9F2F'],
+  [Status.MANUAL, '#FFC21C'],
+  [Status.SCHEDULED, '#A970FF'],
+  [Status.FAILED_ALLOW_FAILURE, '#FFC21C']
 ])
 
 export function statusToColor(status?: Status | string): Color {

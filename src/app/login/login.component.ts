@@ -21,8 +21,13 @@ export class LoginComponent {
 
   username = signal('')
   password = signal('')
+  showPassword = signal(false)
   loading = signal(false)
   error = signal('')
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update((visible) => !visible)
+  }
 
   submit(): void {
     if (!this.username() || !this.password() || this.loading()) {

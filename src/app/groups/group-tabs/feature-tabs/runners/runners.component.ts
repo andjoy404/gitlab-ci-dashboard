@@ -2,6 +2,7 @@ import { GroupId } from '$groups/model/group'
 import { ProjectId } from '$groups/model/project'
 import { Runner, RunnerWithJobs } from '$groups/model/runner'
 import { forkJoinFlatten } from '$groups/util/fork'
+import { AnalyticsReadiness, AnalyticsReadinessService } from '../service/analytics-readiness.service'
 import { CommonModule } from '@angular/common'
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, input, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
@@ -24,7 +25,9 @@ const RUNNER_REFRESH_INTERVAL = 30_000
 })
 export class RunnersComponent implements OnInit {
   private runnerService = inject(RunnerService)
+  private readinessService = inject(AnalyticsReadinessService)
   private destroyRef = inject(DestroyRef)
+  private loadedReadinessKey = ''
 
   groupMap = input.required<Map<GroupId, Set<ProjectId>>>()
 
@@ -35,6 +38,14 @@ export class RunnersComponent implements OnInit {
   filterStatuses = signal<string[]>([])
   loading = signal(false)
   refreshing = signal(false)
+  readiness = signal<AnalyticsReadiness | undefined>(undefined)
+  readinessMessage = computed(() => {
+    if (!this.loading() || this.runners().length > 0) {
+      return ''
+    }
+
+    return 'Collecting analytics for first-time setup. Data will appear automatically.'
+  })
   hoverTooltip = signal<{ text: string; x: number; y: number } | null>(null)
 
   statusCounts = computed<ReadonlyMap<string, number>>(() => {
@@ -68,7 +79,12 @@ export class RunnersComponent implements OnInit {
 
   constructor() {
     effect((onCleanup) => {
-      this.groupMap()
+      const groupIds = [...this.groupMap().keys()]
+      const readinessKey = groupIds.join(',')
+      if (readinessKey !== this.loadedReadinessKey) {
+        this.loadedReadinessKey = readinessKey
+        this.refreshReadiness(groupIds)
+      }
       const request = this.load(false, true)
 
       onCleanup(() => request.unsubscribe())
@@ -81,7 +97,10 @@ export class RunnersComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
         switchMap(() => this.getRunners(false, false))
       )
-      .subscribe((runners) => this.runners.set(runners))
+      .subscribe((runners) => {
+        this.runners.set(runners)
+        this.refreshReadiness([...this.groupMap().keys()])
+      })
   }
 
   refresh(): void {
@@ -119,8 +138,8 @@ export class RunnersComponent implements OnInit {
   }
 
   runnerSegmentStyle(status: string): Record<string, string> {
-    const color = status === 'running' ? '#18d99a' : status === 'idle' ? '#39a0ff' : status === 'paused' ? '#ffc21c' : status === 'offline' ? '#ff8291' : '#ff5267'
-    const fill = status === 'running' ? '#18d99a52' : status === 'idle' ? '#39a0ff52' : status === 'paused' ? '#ffc21c52' : status === 'offline' ? '#ff829152' : '#ff526752'
+    const color = status === 'running' ? '#18d99a' : status === 'idle' ? '#ffc21c' : status === 'paused' ? '#39a0ff' : status === 'offline' ? '#ff8291' : '#ff5267'
+    const fill = status === 'running' ? '#18d99a52' : status === 'idle' ? '#ffc21c52' : status === 'paused' ? '#39a0ff52' : status === 'offline' ? '#ff829152' : '#ff526752'
     return {
       background: fill,
       border: `1px solid ${color}`,
@@ -149,6 +168,15 @@ export class RunnersComponent implements OnInit {
     return forkJoinFlatten(this.groupMap(), (groupId) =>
       this.runnerService.getRunners(groupId, refresh, reportError)
     )
+  }
+
+  private refreshReadiness(groupIds: GroupId[]): void {
+    this.readinessService
+      .getReadiness(groupIds)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((readiness) => {
+        this.readiness.set(readiness)
+      })
   }
 }
 

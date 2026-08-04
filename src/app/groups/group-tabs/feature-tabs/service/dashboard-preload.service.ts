@@ -45,12 +45,12 @@ export class DashboardPreloadService {
       {
         feature: 'latest-pipelines',
         url: 'api/analytics/summary',
-        params: { group_ids: String(groupId), hours: '24' }
+        params: { group_ids: String(groupId), hours: '24', pipeline_view: 'all' }
       },
       {
         feature: 'pipelines',
-        url: 'api/projects/pipelines',
-        params: { ...params, refresh: 'true' }
+        url: 'api/analytics/pipelines',
+        params: { ...params, hours: '24' }
       },
       {
         feature: 'runners',

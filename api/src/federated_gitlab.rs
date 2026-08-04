@@ -1,6 +1,6 @@
 use crate::error::ApiError;
 use crate::gitlab::{GitlabApi, GitlabClient};
-use crate::model::{Branch, Bridge, Group, Job, JobStatus, Pipeline, Project, Runner, RunnerJob, RunnerManager, Schedule};
+use crate::model::{Branch, Bridge, Group, Job, JobStatus, Pipeline, Project, Runner, RunnerJob, RunnerManager, Schedule, User};
 use actix_web::web::Bytes;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -178,5 +178,11 @@ impl GitlabApi for FederatedGitlabClient {
 
     async fn artifact(&self, project: u64, job: u64) -> Result<Bytes, ApiError> {
         let (instance,local_project)=self.decode(project)?; let (_,local_job)=self.decode(job)?; instance.client.artifact(local_project,local_job).await
+    }
+
+    async fn current_user(&self) -> Result<User, ApiError> {
+        let instances = self.instances.read().expect("GitLab environment registry lock").clone();
+        let instance = instances.first().ok_or_else(|| ApiError::server_error("No GitLab environments are configured"))?;
+        instance.client.current_user().await
     }
 }

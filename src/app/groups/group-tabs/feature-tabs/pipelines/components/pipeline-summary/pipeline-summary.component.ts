@@ -17,6 +17,7 @@ interface StatusSegment {
 })
 export class PipelineSummaryComponent {
   statusCounts = input.required<ReadonlyMap<Status, number>>()
+  loading = input(false)
   hoverTooltip = signal<{ text: string; x: number; y: number } | null>(null)
 
   total = computed(() => Array.from(this.statusCounts().values()).reduce((total, count) => total + count, 0))

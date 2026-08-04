@@ -7,6 +7,7 @@ interface AuthStatus {
   enabled: boolean
   username?: string
   role?: 'admin' | 'editor'
+  must_change_password?: boolean
 }
 
 @Injectable({ providedIn: 'root' })
@@ -17,6 +18,7 @@ export class AuthService {
   enabled = signal(false)
   username = signal('')
   role = signal<'admin' | 'editor' | undefined>(undefined)
+  mustChangePassword = signal(false)
   loading = signal(true)
 
   constructor() {
@@ -35,7 +37,18 @@ export class AuthService {
       this.authenticated.set(false)
       this.username.set('')
       this.role.set(undefined)
+      this.mustChangePassword.set(false)
     })
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.put<void>('api/auth/password', {
+      current_password: currentPassword,
+      new_password: newPassword
+    }).pipe(
+      tap(() => this.mustChangePassword.set(false)),
+      catchError((error: HttpErrorResponse) => throwError(() => error))
+    )
   }
 
   private refresh(): void {
@@ -45,6 +58,7 @@ export class AuthService {
         tap((status) => this.applyStatus(status)),
         catchError(() => {
           this.authenticated.set(false)
+          this.mustChangePassword.set(false)
           return EMPTY
         }),
         finalize(() => this.loading.set(false))
@@ -57,6 +71,7 @@ export class AuthService {
     this.enabled.set(status.enabled)
     this.username.set(status.username ?? '')
     this.role.set(status.role)
+    this.mustChangePassword.set(Boolean(status.must_change_password))
   }
 
   isAdmin(): boolean {

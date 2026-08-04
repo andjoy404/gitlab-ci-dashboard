@@ -12,9 +12,16 @@ use std::time::{Duration, Instant};
 const COOKIE_NAME: &str = "gcd_session";
 const MAX_FAILED_ATTEMPTS: usize = 5;
 const LOGIN_WINDOW: Duration = Duration::from_secs(60);
+const DEFAULT_ADMIN_USERNAME: &str = "admin";
+const DEFAULT_ADMIN_PASSWORD: &str = "admin";
 
 #[derive(Clone)]
-struct Session { user_id: i64, username: String, role: String }
+struct Session {
+    user_id: i64,
+    username: String,
+    role: String,
+    must_change_password: bool,
+}
 
 #[derive(Clone)]
 pub struct AuthState {
@@ -26,7 +33,8 @@ pub struct AuthState {
 }
 
 #[derive(Deserialize)] struct LoginRequest { username: String, password: String }
-#[derive(Serialize)] struct AuthStatus { authenticated: bool, enabled: bool, username: Option<String>, role: Option<String> }
+#[derive(Deserialize)] struct ChangePasswordRequest { current_password: String, new_password: String }
+#[derive(Serialize)] struct AuthStatus { authenticated: bool, enabled: bool, username: Option<String>, role: Option<String>, must_change_password: bool }
 #[derive(Serialize)] struct UserView { id:i64, username:String, display_name:String, email:String, role:String, enabled:bool, created_at:chrono::DateTime<chrono::Utc> }
 #[derive(Deserialize)] struct CreateUser { username:String, password:String, #[serde(default)] display_name:String, #[serde(default)] email:String, role:String }
 #[derive(Deserialize)] struct UpdateUser { username:String, #[serde(default)] password:String, #[serde(default)] display_name:String, #[serde(default)] email:String, role:String, enabled:bool }
@@ -36,20 +44,22 @@ pub struct AuthState {
 
 impl AuthState {
     pub async fn new(pool: PgPool, config: &crate::config::config_file::Authentication) -> Result<Self, String> {
-        if config.username.is_empty() != config.password.is_empty() { return Err("authentication.username and authentication.password must both be set".into()) }
-        if !config.username.is_empty() {
-            let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM app_users").fetch_one(&pool).await.map_err(|e|e.to_string())?;
-            if count==0 {
-                let hash=hash_password(&config.password)?;
-                sqlx::query("INSERT INTO app_users(username,password_hash,display_name,role) VALUES($1,$2,$1,'admin')")
-                    .bind(config.username.trim()).bind(hash).execute(&pool).await.map_err(|e|e.to_string())?;
-                log::info!("Created initial administrator account from config.toml");
-            }
+        let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM app_users").fetch_one(&pool).await.map_err(|e|e.to_string())?;
+        if count==0 {
+            let hash = hash_password(DEFAULT_ADMIN_PASSWORD)?;
+            sqlx::query("INSERT INTO app_users(username,password_hash,display_name,role,must_change_password) VALUES($1,$2,$1,'admin',TRUE)")
+                .bind(DEFAULT_ADMIN_USERNAME)
+                .bind(hash)
+                .execute(&pool)
+                .await
+                .map_err(|e|e.to_string())?;
+            log::info!("Created initial administrator account (admin/admin) and enabled forced password change on first login");
         }
         Ok(Self { pool, secure_cookie:config.secure_cookie, sessions:Arc::new(Mutex::new(HashMap::new())), failed_attempts:Arc::new(Mutex::new(VecDeque::new())), allow_unauthenticated:false })
     }
     fn session(&self, request:&HttpRequest)->Option<Session>{request.cookie(COOKIE_NAME).and_then(|c|self.sessions.lock().ok()?.get(c.value()).cloned())}
     pub fn is_authenticated(&self, request:&HttpRequest)->bool{self.allow_unauthenticated||self.session(request).is_some()}
+    pub fn requires_password_change(&self, request:&HttpRequest)->bool{self.session(request).is_some_and(|s|s.must_change_password)}
     pub fn require_admin(&self, request:&HttpRequest)->Result<(),ApiError>{if self.allow_unauthenticated{return Ok(())}match self.session(request){Some(s) if s.role=="admin"=>Ok(()),Some(_)=>Err(ApiError::forbidden("Administrator access is required")),None=>Err(ApiError::forbidden("Authentication is required"))}}
     fn require_user_id(&self, request:&HttpRequest)->Result<i64,ApiError>{self.session(request).map(|s|s.user_id).ok_or_else(||ApiError::forbidden("Authentication is required"))}
     fn limited(&self)->bool{let mut a=self.failed_attempts.lock().expect("login attempts lock");let cutoff=Instant::now()-LOGIN_WINDOW;while a.front().is_some_and(|v|*v<cutoff){a.pop_front();}a.len()>=MAX_FAILED_ATTEMPTS}
@@ -61,20 +71,59 @@ impl AuthState {
     }
 }
 
-pub fn setup_handlers(cfg:&mut web::ServiceConfig){cfg.route("/status",web::get().to(status)).route("/login",web::post().to(login)).route("/logout",web::post().to(logout));}
+pub fn setup_handlers(cfg:&mut web::ServiceConfig){cfg.route("/status",web::get().to(status)).route("/login",web::post().to(login)).route("/logout",web::post().to(logout)).route("/password",web::put().to(change_password));}
 pub fn setup_user_handlers(cfg:&mut web::ServiceConfig){cfg.route("/users",web::get().to(list_users)).route("/users",web::post().to(create_user)).route("/users/{id}",web::put().to(update_user)).route("/users/{id}",web::delete().to(delete_user)).route("/preferences",web::get().to(get_preferences)).route("/preferences/theme",web::put().to(save_theme)).route("/preferences/favorites",web::put().to(save_favorites));}
 
-async fn status(req:HttpRequest,auth:web::Data<AuthState>)->HttpResponse{let s=auth.session(&req);HttpResponse::Ok().json(AuthStatus{authenticated:auth.allow_unauthenticated||s.is_some(),enabled:true,username:s.as_ref().map(|v|v.username.clone()),role:s.map(|v|v.role)})}
+async fn status(req:HttpRequest,auth:web::Data<AuthState>)->HttpResponse{let s=auth.session(&req);HttpResponse::Ok().json(AuthStatus{authenticated:auth.allow_unauthenticated||s.is_some(),enabled:true,username:s.as_ref().map(|v|v.username.clone()),role:s.as_ref().map(|v|v.role.clone()),must_change_password:s.is_some_and(|v|v.must_change_password)})}
 async fn login(input:web::Json<LoginRequest>,auth:web::Data<AuthState>)->HttpResponse{
     if auth.limited(){return HttpResponse::TooManyRequests().json(serde_json::json!({"message":"Too many login attempts. Try again in one minute."}))}
-    let row=sqlx::query("SELECT id,username,password_hash,role FROM app_users WHERE LOWER(username)=LOWER($1) AND enabled=TRUE").bind(input.username.trim()).fetch_optional(&auth.pool).await;
-    if let Ok(Some(row))=row { let hash:String=row.get("password_hash"); if verify_password(&input.password,&hash) { auth.failed_attempts.lock().expect("login attempts lock").clear();let token=random_token();let session=Session{user_id:row.get("id"),username:row.get("username"),role:row.get("role")};auth.sessions.lock().expect("sessions lock").insert(token.clone(),session.clone());let cookie=Cookie::build(COOKIE_NAME,token).path("/").http_only(true).secure(auth.secure_cookie).same_site(SameSite::Lax).finish();return HttpResponse::Ok().insert_header(("Cache-Control","no-store")).cookie(cookie).json(AuthStatus{authenticated:true,enabled:true,username:Some(session.username),role:Some(session.role)})}}
+    let row=sqlx::query("SELECT id,username,password_hash,role,must_change_password FROM app_users WHERE LOWER(username)=LOWER($1) AND enabled=TRUE").bind(input.username.trim()).fetch_optional(&auth.pool).await;
+    if let Ok(Some(row))=row { let hash:String=row.get("password_hash"); if verify_password(&input.password,&hash) { auth.failed_attempts.lock().expect("login attempts lock").clear();let token=random_token();let session=Session{user_id:row.get("id"),username:row.get("username"),role:row.get("role"),must_change_password:row.get("must_change_password")};auth.sessions.lock().expect("sessions lock").insert(token.clone(),session.clone());let cookie=Cookie::build(COOKIE_NAME,token).path("/").http_only(true).secure(auth.secure_cookie).same_site(SameSite::Lax).finish();return HttpResponse::Ok().insert_header(("Cache-Control","no-store")).cookie(cookie).json(AuthStatus{authenticated:true,enabled:true,username:Some(session.username),role:Some(session.role),must_change_password:session.must_change_password})}}
     auth.failed_attempts.lock().expect("login attempts lock").push_back(Instant::now());HttpResponse::Unauthorized().json(serde_json::json!({"message":"Invalid username or password"}))
 }
 async fn logout(req:HttpRequest,auth:web::Data<AuthState>)->HttpResponse{if let Some(c)=req.cookie(COOKIE_NAME){auth.sessions.lock().expect("sessions lock").remove(c.value());}let mut cookie=Cookie::build(COOKIE_NAME,"").path("/").finish();cookie.make_removal();HttpResponse::Ok().cookie(cookie).finish()}
 
+async fn change_password(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<ChangePasswordRequest>)->Result<HttpResponse,ApiError>{
+    let session = auth.session(&req).ok_or_else(||ApiError::forbidden("Authentication is required"))?;
+    if input.new_password.len() < 8 {
+        return Err(ApiError::bad_request("Password must contain at least 8 characters"));
+    }
+    let current_hash: Option<String> = sqlx::query_scalar("SELECT password_hash FROM app_users WHERE id=$1 AND enabled=TRUE")
+        .bind(session.user_id)
+        .fetch_optional(&auth.pool)
+        .await
+        .map_err(db)?;
+    let Some(current_hash) = current_hash else {
+        return Err(ApiError::forbidden("Authentication is required"));
+    };
+    if !verify_password(&input.current_password, &current_hash) {
+        return Err(ApiError::bad_request("Current password is incorrect"));
+    }
+    if verify_password(&input.new_password, &current_hash) {
+        return Err(ApiError::bad_request("New password must be different from the current password"));
+    }
+
+    let hash = hash_password(&input.new_password).map_err(ApiError::server_error)?;
+    sqlx::query("UPDATE app_users SET password_hash=$1,must_change_password=FALSE,updated_at=NOW() WHERE id=$2")
+        .bind(hash)
+        .bind(session.user_id)
+        .execute(&auth.pool)
+        .await
+        .map_err(db)?;
+
+    if let Some(cookie) = req.cookie(COOKIE_NAME) {
+        if let Ok(mut sessions) = auth.sessions.lock() {
+            if let Some(session) = sessions.get_mut(cookie.value()) {
+                session.must_change_password = false;
+            }
+        }
+    }
+
+    Ok(HttpResponse::NoContent().finish())
+}
+
 async fn list_users(req:HttpRequest,auth:web::Data<AuthState>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;let rows=sqlx::query("SELECT id,username,display_name,email,role,enabled,created_at FROM app_users ORDER BY LOWER(username)").fetch_all(&auth.pool).await.map_err(db)?;let users=rows.into_iter().map(|r|UserView{id:r.get("id"),username:r.get("username"),display_name:r.get("display_name"),email:r.get("email"),role:r.get("role"),enabled:r.get("enabled"),created_at:r.get("created_at")}).collect::<Vec<_>>();Ok(HttpResponse::Ok().json(users))}
-async fn create_user(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<CreateUser>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;validate(&input.username,&input.role,Some(&input.password))?;let hash=hash_password(&input.password).map_err(ApiError::server_error)?;let row=sqlx::query("INSERT INTO app_users(username,password_hash,display_name,email,role) VALUES($1,$2,$3,$4,$5) RETURNING id").bind(input.username.trim()).bind(hash).bind(input.display_name.trim()).bind(input.email.trim()).bind(&input.role).fetch_one(&auth.pool).await.map_err(db)?;Ok(HttpResponse::Created().json(serde_json::json!({"id":row.get::<i64,_>("id")})))}
+async fn create_user(req:HttpRequest,auth:web::Data<AuthState>,input:web::Json<CreateUser>)->Result<HttpResponse,ApiError>{auth.require_admin(&req)?;validate(&input.username,&input.role,Some(&input.password))?;let hash=hash_password(&input.password).map_err(ApiError::server_error)?;let row=sqlx::query("INSERT INTO app_users(username,password_hash,display_name,email,role,must_change_password) VALUES($1,$2,$3,$4,$5,FALSE) RETURNING id").bind(input.username.trim()).bind(hash).bind(input.display_name.trim()).bind(input.email.trim()).bind(&input.role).fetch_one(&auth.pool).await.map_err(db)?;Ok(HttpResponse::Created().json(serde_json::json!({"id":row.get::<i64,_>("id")})))}
 async fn update_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i64>,input:web::Json<UpdateUser>)->Result<HttpResponse,ApiError>{
     auth.require_admin(&req)?;
     validate(&input.username,&input.role,None)?;
@@ -99,7 +148,7 @@ async fn update_user(req:HttpRequest,auth:web::Data<AuthState>,path:web::Path<i6
             .map_err(db)?;
     } else {
         let hash = hash_password(&input.password).map_err(ApiError::server_error)?;
-        sqlx::query("UPDATE app_users SET username=$1,password_hash=$2,display_name=$3,email=$4,role=$5,enabled=$6,updated_at=NOW() WHERE id=$7")
+        sqlx::query("UPDATE app_users SET username=$1,password_hash=$2,display_name=$3,email=$4,role=$5,enabled=$6,must_change_password=FALSE,updated_at=NOW() WHERE id=$7")
             .bind(input.username.trim())
             .bind(hash)
             .bind(input.display_name.trim())

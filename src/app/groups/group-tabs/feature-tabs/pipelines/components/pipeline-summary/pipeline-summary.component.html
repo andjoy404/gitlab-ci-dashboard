@@ -1,12 +1,14 @@
 <section class="pipeline-summary" aria-label="Root group pipeline overview">
   <div class="total">
-    <span class="label">Latest pipelines</span>
+    <span class="label">Total pipelines</span>
     <strong>{{ total() }}</strong>
-    <span class="hint">pipeline per branch</span>
+    <span class="hint">based on selected pipeline view</span>
   </div>
 
   <div class="distribution">
-    @if (segments().length) {
+    @if (loading()) {
+      <div class="loading-bar" aria-hidden="true"></div>
+    } @else if (segments().length) {
       <div class="legend">
         @for (segment of segments(); track segment.status) {
           <span class="legend-item">

@@ -16,4 +16,8 @@ export class ErrorService {
   setError(context: ErrorContext): void {
     this._error.set(context)
   }
+
+  clearError(): void {
+    this._error.set(null)
+  }
 }

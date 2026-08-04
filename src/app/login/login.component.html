@@ -8,11 +8,11 @@
         nz-button
         nzType="text"
         nz-tooltip
-        [nzTooltipTitle]="theme.isDracula() ? 'Use light theme' : 'Use Dracula theme'"
+        [nzTooltipTitle]="theme.isDracula() ? 'Use light theme' : 'Use dark theme'"
         (click)="theme.toggle()"
       >
         <span aria-hidden="true">{{ theme.isDracula() ? '☀' : '☾' }}</span>
-        {{ theme.isDracula() ? 'Light' : 'Dracula' }}
+        {{ theme.isDracula() ? 'Light' : 'Dark' }}
       </button>
     </div>
     <h1>Welcome back</h1>
@@ -32,16 +32,27 @@
     </nz-input-group>
 
     <label for="password">Password</label>
-    <nz-input-group nzPrefixIcon="lock">
+    <nz-input-group nzPrefixIcon="lock" [nzSuffix]="passwordSuffix">
       <input
         id="password"
         name="password"
-        type="password"
+        [type]="showPassword() ? 'text' : 'password'"
         autocomplete="current-password"
         [(ngModel)]="password"
         nz-input
       />
     </nz-input-group>
+
+    <ng-template #passwordSuffix>
+      <button
+        type="button"
+        class="login-password-toggle"
+        [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+        (click)="togglePasswordVisibility()"
+      >
+        <span nz-icon [nzType]="showPassword() ? 'eye-invisible' : 'eye'"></span>
+      </button>
+    </ng-template>
 
     @if (error()) {
       <div class="login-error" role="alert">{{ error() }}</div>

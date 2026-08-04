@@ -1,6 +1,7 @@
 use crate::error::ApiError;
 use crate::federated_gitlab::{EnvironmentClientConfig, FederatedGitlabClient};
 use crate::group::GroupService;
+use crate::gitlab::{GitlabApi, GitlabClient};
 use actix_web::{web, HttpRequest, HttpResponse};
 use aes_gcm::{aead::{Aead, OsRng, rand_core::RngCore}, Aes256Gcm, KeyInit, Nonce};
 use serde::{Deserialize, Serialize};
@@ -25,8 +26,9 @@ pub struct EnvironmentInput {
     #[serde(default = "default_true")] include_subgroups: bool,
 }
 #[derive(Serialize, Deserialize)]
-pub struct GlobalConfig { company_name: String, #[serde(default)] company_logo: String }
+pub struct GlobalConfig { company_name: String, #[serde(default)] company_logo: String, #[serde(default = "default_pipeline_view")] pipeline_view: String }
 fn default_true() -> bool { true }
+fn default_pipeline_view() -> String { "all".to_string() }
 
 impl EnvironmentStore {
     pub fn new(pool: PgPool, key_hex: &str) -> Result<Self, String> {
@@ -72,19 +74,27 @@ pub fn setup_handlers(cfg: &mut web::ServiceConfig) {
 }
 async fn list(store:web::Data<EnvironmentStore>) -> Result<HttpResponse,ApiError> { Ok(HttpResponse::Ok().json(store.list().await?)) }
 async fn get_global_config(store:web::Data<EnvironmentStore>) -> Result<HttpResponse,ApiError> {
-    let row=sqlx::query("SELECT company_name,company_logo FROM app_global_settings WHERE singleton=TRUE").fetch_one(&store.pool).await.map_err(db_error)?;
-    Ok(HttpResponse::Ok().json(GlobalConfig{company_name:row.get("company_name"),company_logo:row.get("company_logo")}))
+    let row=sqlx::query("SELECT company_name,company_logo,pipeline_view FROM app_global_settings WHERE singleton=TRUE").fetch_one(&store.pool).await.map_err(db_error)?;
+    Ok(HttpResponse::Ok().json(GlobalConfig{
+        company_name: row.get("company_name"),
+        company_logo: row.get("company_logo"),
+        pipeline_view: row.get::<Option<String>, _>("pipeline_view").unwrap_or_else(|| default_pipeline_view()),
+    }))
 }
 async fn save_global_config(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, input:web::Json<GlobalConfig>, store:web::Data<EnvironmentStore>) -> Result<HttpResponse,ApiError> {
     auth.require_admin(&req)?;
-    if input.company_name.trim().is_empty(){return Err(ApiError::bad_request("Company name is required"))}
-    sqlx::query("INSERT INTO app_global_settings(singleton,company_name,company_logo) VALUES(TRUE,$1,$2) ON CONFLICT(singleton) DO UPDATE SET company_name=EXCLUDED.company_name,company_logo=EXCLUDED.company_logo,updated_at=NOW()")
-        .bind(input.company_name.trim()).bind(&input.company_logo).execute(&store.pool).await.map_err(db_error)?;
+    let company_name=input.company_name.trim();
+    if company_name.is_empty(){return Err(ApiError::bad_request("Company name is required"))}
+    let pipeline_view = input.pipeline_view.trim();
+    if pipeline_view != "all" && pipeline_view != "latest" { return Err(ApiError::bad_request("Invalid pipeline view")) }
+    sqlx::query("INSERT INTO app_global_settings(singleton,company_name,company_logo,pipeline_view) VALUES(TRUE,$1,$2,$3) ON CONFLICT(singleton) DO UPDATE SET company_name=EXCLUDED.company_name,company_logo=EXCLUDED.company_logo,pipeline_view=EXCLUDED.pipeline_view,updated_at=NOW()")
+        .bind(company_name).bind(&input.company_logo).bind(pipeline_view).execute(&store.pool).await.map_err(db_error)?;
     Ok(HttpResponse::NoContent().finish())
 }
 async fn create(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, input:web::Json<EnvironmentInput>, store:web::Data<EnvironmentStore>, clients:web::Data<Arc<FederatedGitlabClient>>, groups:web::Data<GroupService>) -> Result<HttpResponse,ApiError> {
     auth.require_admin(&req)?;
     if input.name.trim().is_empty() || input.base_url.trim().is_empty() || input.token.trim().is_empty() { return Err(ApiError::bad_request("Name, GitLab URL, and token are required")) }
+    verify_gitlab_token(input.base_url.trim(), input.token.trim()).await?;
     let encrypted=store.encrypt(input.token.trim())?;
     let row=sqlx::query("INSERT INTO gitlab_environments(namespace_id,name,base_url,token_ciphertext,group_ids,enabled,only_top_level,include_subgroups) VALUES((SELECT COALESCE(MAX(namespace_id),-1)+1 FROM gitlab_environments),$1,$2,$3,$4,$5,$6,$7) RETURNING id")
         .bind(input.name.trim()).bind(input.base_url.trim_end_matches('/')).bind(encrypted).bind(&input.group_ids).bind(input.enabled).bind(input.only_top_level).bind(input.include_subgroups).fetch_one(&store.pool).await.map_err(db_error)?;
@@ -100,6 +110,7 @@ async fn update(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, path:we
         sqlx::query("UPDATE gitlab_environments SET name=$1,base_url=$2,group_ids=$3,enabled=$4,only_top_level=$5,include_subgroups=$6,updated_at=NOW() WHERE id=$7")
             .bind(input.name.trim()).bind(input.base_url.trim_end_matches('/')).bind(&input.group_ids).bind(input.enabled).bind(input.only_top_level).bind(input.include_subgroups).bind(id).execute(&store.pool).await.map_err(db_error)?;
     } else {
+        verify_gitlab_token(input.base_url.trim(), input.token.trim()).await?;
         let encrypted=store.encrypt(input.token.trim())?;
         sqlx::query("UPDATE gitlab_environments SET name=$1,base_url=$2,token_ciphertext=$3,group_ids=$4,enabled=$5,only_top_level=$6,include_subgroups=$7,updated_at=NOW() WHERE id=$8")
             .bind(input.name.trim()).bind(input.base_url.trim_end_matches('/')).bind(encrypted).bind(&input.group_ids).bind(input.enabled).bind(input.only_top_level).bind(input.include_subgroups).bind(id).execute(&store.pool).await.map_err(db_error)?;
@@ -110,4 +121,15 @@ async fn remove(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, path:we
     auth.require_admin(&req)?;
     sqlx::query("DELETE FROM gitlab_environments WHERE id=$1").bind(path.into_inner()).execute(&store.pool).await.map_err(db_error)?;
     clients.replace(store.clients().await?); groups.invalidate(); Ok(HttpResponse::NoContent().finish())
+}
+
+async fn verify_gitlab_token(base_url: &str, token: &str) -> Result<(), ApiError> {
+    let client = GitlabClient::new(base_url, token);
+    match client.current_user().await {
+        Ok(_) => Ok(()),
+        Err(error) if error.is_unauthorized() || error.is_forbidden() => Err(ApiError::bad_request(
+            "GitLab access token is invalid or does not have access to that instance",
+        )),
+        Err(error) => Err(error),
+    }
 }
