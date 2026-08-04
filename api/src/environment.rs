@@ -78,7 +78,7 @@ async fn get_global_config(store:web::Data<EnvironmentStore>) -> Result<HttpResp
     Ok(HttpResponse::Ok().json(GlobalConfig{
         company_name: row.get("company_name"),
         company_logo: row.get("company_logo"),
-        pipeline_view: row.get::<Option<String>, _>("pipeline_view").unwrap_or_else(|| default_pipeline_view()),
+        pipeline_view: row.get::<Option<String>, _>("pipeline_view").unwrap_or(default_pipeline_view()),
     }))
 }
 async fn save_global_config(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, input:web::Json<GlobalConfig>, store:web::Data<EnvironmentStore>) -> Result<HttpResponse,ApiError> {

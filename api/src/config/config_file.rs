@@ -41,7 +41,6 @@ impl Default for FileConfig {
 
 impl Default for Server { fn default() -> Self { Server{ listen_ip: "0.0.0.0".into(), listen_port: 8080, worker_count: 1 } } }
 impl Default for Security { fn default() -> Self { Security{ environment_token_encryption_key: "0000000000000000000000000000000000000000000000000000000000000000".into() } } }
-impl Default for Authentication { fn default() -> Self { Authentication{ secure_cookie:false } } }
 impl Default for Database { fn default() -> Self { Database{ url: "".into(), max_connections:5 } } }
 impl Default for Analytics { fn default() -> Self { Analytics{ enabled:false, sync_interval_seconds:60, retention_days:30 } } }
 impl Default for Cache { fn default() -> Self { Cache{ group_ttl_seconds:60, project_ttl_seconds:60, branch_ttl_seconds:60, job_ttl_seconds:60, pipeline_ttl_seconds:60, schedule_ttl_seconds:60, runner_ttl_seconds:60, runner_detail_ttl_seconds:60, runner_job_ttl_seconds:60, artifact_ttl_seconds:60 } } }
@@ -52,7 +51,7 @@ impl Default for Ui { fn default() -> Self { Ui{ read_only:false, hide_write_act
 pub struct Server { pub listen_ip: String, pub listen_port: u16, pub worker_count: usize }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Security { pub environment_token_encryption_key: String }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct Authentication {
     #[serde(default)]
     pub secure_cookie: bool,

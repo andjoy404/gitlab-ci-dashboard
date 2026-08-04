@@ -121,16 +121,6 @@ impl PipelineService {
         }
     }
 
-    pub async fn get_newest_pipelines_by_branch(
-        &self,
-        project_id: u64,
-        refresh: bool,
-    ) -> Result<Vec<Pipeline>, ApiError> {
-        self.get_recent_pipelines(project_id, refresh)
-            .await
-            .map(latest_by_branch)
-    }
-
     pub async fn get_recent_pipelines(
         &self,
         project_id: u64,
@@ -147,25 +137,6 @@ impl PipelineService {
 
         self.get_pipelines(project_id, None).await
     }
-}
-
-fn latest_by_branch(pipelines: Vec<Pipeline>) -> Vec<Pipeline> {
-    let mut newest = HashMap::<String, Pipeline>::new();
-
-    for pipeline in pipelines {
-        newest
-            .entry(pipeline.branch.clone())
-            .and_modify(|current| {
-                if pipeline.updated_at > current.updated_at {
-                    *current = pipeline.clone();
-                }
-            })
-            .or_insert(pipeline);
-    }
-
-    let mut pipelines = newest.into_values().collect::<Vec<_>>();
-    pipelines.sort_unstable_by_key(|pipeline| std::cmp::Reverse(pipeline.updated_at));
-    pipelines
 }
 
 fn is_active(status: &crate::model::PipelineStatus) -> bool {
