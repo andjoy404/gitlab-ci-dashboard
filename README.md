@@ -75,7 +75,14 @@ cp api/config.example.toml api/config.toml
 
 Set at minimum:
 
-- `security.environment_token_encryption_key` (64 hex chars)
+- `security.environment_token_encryption_key` (64 hex chars) — generate with:
+  ```bash
+  # macOS, Linux
+  openssl rand -hex 32
+  
+  # Windows (PowerShell)
+  [Convert]::ToHexString((1..32 | % { Get-Random -Max 256 }))
+  ```
 - `database.url` (when analytics is enabled)
 
 ### 3) Start with Docker Compose
@@ -161,7 +168,7 @@ Template/reference:
 | `server.listen_ip` | string | Network interface address for the web server | no | `0.0.0.0` |
 | `server.listen_port` | int | Port for the web server | no | `8080` |
 | `server.worker_count` | int | Number of worker threads | no | `4` |
-| `security.environment_token_encryption_key` | string | 64 hex chars used to encrypt GitLab tokens stored in DB | yes | |
+| `security.environment_token_encryption_key` | string | 64 hex chars used to encrypt GitLab tokens stored in DB. Generate: `openssl rand -hex 32` | yes | |
 | `authentication.secure_cookie` | bool | Use secure cookies when TLS is enabled (optional `[authentication]`) | no | `false` |
 | `database.url` | string | PostgreSQL connection URL for analytics persistence | yes if analytics enabled | |
 | `database.max_connections` | int | Maximum DB pool connections | no | `10` |

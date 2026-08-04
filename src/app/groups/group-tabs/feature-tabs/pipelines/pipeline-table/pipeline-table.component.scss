@@ -7,6 +7,18 @@ td {
   white-space: nowrap;
 }
 
+:host ::ng-deep .scrolling-table {
+  overflow-x: auto !important;
+}
+
+/* Constrain table content height to force scrollbar */
+:host ::ng-deep .scrolling-table .ant-table-content {
+  max-height: 500px !important;
+  overflow: auto !important;
+  overflow-x: scroll !important;
+  scrollbar-gutter: stable;
+}
+
 .blue-bg {
   background-color: #f0f8ff;
 }
@@ -33,4 +45,18 @@ td {
 
 :host ::ng-deep th:hover .nz-resizable-handle-left {
   border-left-color: #bd93f9;
+}
+
+/* Force horizontal scrollbar visibility */
+:host ::ng-deep .scrolling-table .ant-table-content {
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable;
+}
+
+/* Keep sticky Action column visible */
+:host ::ng-deep .ant-table-cell-fix-right {
+  position: sticky !important;
+  right: 0 !important;
+  z-index: 5 !important;
 }

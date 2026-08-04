@@ -2,7 +2,7 @@ nz-spin {
   height: 25px;
 }
 
-:host{display:block}.data-workspace{display:flex;flex-direction:column;min-height:0;padding:0;border:1px solid var(--dashboard-border);border-radius:10px;background:var(--dashboard-surface);box-shadow:var(--dashboard-shadow);overflow:hidden}.workspace-toolbar{padding:.65rem;border-bottom:1px solid var(--dashboard-border)}.workspace-status-filter{padding:.1rem 0}
+:host{display:block}.data-workspace{display:flex;flex-direction:column;min-height:0;padding:0;border:1px solid var(--dashboard-border);border-radius:10px;background:var(--dashboard-surface);box-shadow:var(--dashboard-shadow);overflow:auto}.workspace-toolbar{padding:.65rem;border-bottom:1px solid var(--dashboard-border)}.workspace-status-filter{padding:.1rem 0}
 
 .pipeline-actions {
   display: flex;

@@ -15,7 +15,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   gitlab-ci-dashboard:
-    image: ghcr.io/andjoy404/gitlab-ci-dashboard:main
+    image: ghcr.io/andjoy404/gitlab-ci-dashboard:latest
     build:
       context: .
       args:
