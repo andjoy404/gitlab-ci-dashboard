@@ -223,6 +223,8 @@ Prometheus endpoint:
 
 - `RUST_LOG` (optional): set backend log level, for example `RUST_LOG=debug`
 
-## Changelog
+## Releases
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes and change history.
+Release notes and change history are published on GitHub Releases:
+
+- https://github.com/andjoy404/gitlab-ci-dashboard/releases

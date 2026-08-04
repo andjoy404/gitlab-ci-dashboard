@@ -56,13 +56,17 @@ jobs:
           build-args: |
             VERSION_ARG=${{ github.sha }}
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          append_body: true
           body: |
-            Release ${{ github.ref_name }} - Docker image published to GHCR.
+            Docker image:
+            - ghcr.io/andjoy404/gitlab-ci-dashboard:${{ github.sha }}
+            - ghcr.io/andjoy404/gitlab-ci-dashboard:latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
