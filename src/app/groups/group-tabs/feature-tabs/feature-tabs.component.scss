@@ -206,3 +206,48 @@
 :host-context(.dracula-theme) ::ng-deep .arcane-tabs > .ant-tabs-nav .ant-tabs-tab:nth-child(5)::before {
   background: #292d30;
 }
+
+.row-actions {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.row-actions button {
+  opacity: 0.7;
+  transition: opacity 140ms ease, color 140ms ease;
+}
+
+.row-actions button:hover {
+  opacity: 1;
+}
+
+.row-actions button[nzDanger] {
+  color: inherit;
+}
+
+.row-actions button[nzDanger]:hover {
+  color: #ff4d4f;
+}
+
+.row-actions button[nzDanger] [nz-icon] {
+  color: #ff4d4f;
+  opacity: 0.6;
+}
+
+.row-actions button[nzDanger]:hover [nz-icon] {
+  opacity: 1;
+}
+
+.active-default {
+  opacity: 1 !important;
+}
+
+.active-default [nz-icon] {
+  color: #ffc21c !important;
+  filter: drop-shadow(0 0 4px rgba(255, 194, 28, 0.4));
+}
+
+.fill-star {
+  font-weight: bold;
+}

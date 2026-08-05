@@ -16,6 +16,7 @@ pub struct EnvironmentView {
     id: i64, namespace_id: i16, name: String, base_url: String,
     group_ids: Vec<i64>, enabled: bool, only_top_level: bool, include_subgroups: bool,
     token_configured: bool, last_tested_at: Option<chrono::DateTime<chrono::Utc>>, last_error: Option<String>,
+    is_default: bool,
 }
 #[derive(Deserialize)]
 pub struct EnvironmentInput {
@@ -62,14 +63,15 @@ impl EnvironmentStore {
         rows.into_iter().map(|r| Ok(EnvironmentClientConfig { index: r.get::<i16,_>("namespace_id") as usize, name: r.get("name"), url: r.get("base_url"), token: self.decrypt(r.get("token_ciphertext"))?, group_ids: r.get::<Vec<i64>,_>("group_ids").into_iter().map(|id|id as u64).collect() })).collect()
     }
     async fn list(&self) -> Result<Vec<EnvironmentView>, ApiError> {
-        let rows=sqlx::query("SELECT id,namespace_id,name,base_url,group_ids,enabled,only_top_level,include_subgroups,last_tested_at,last_error FROM gitlab_environments ORDER BY name").fetch_all(&self.pool).await.map_err(db_error)?;
-        Ok(rows.into_iter().map(|r| EnvironmentView { id:r.get("id"), namespace_id:r.get("namespace_id"), name:r.get("name"), base_url:r.get("base_url"), group_ids:r.get("group_ids"), enabled:r.get("enabled"), only_top_level:r.get("only_top_level"), include_subgroups:r.get("include_subgroups"), token_configured:true, last_tested_at:r.get("last_tested_at"), last_error:r.get("last_error") }).collect())
+        let rows=sqlx::query("SELECT id,namespace_id,name,base_url,group_ids,enabled,only_top_level,include_subgroups,last_tested_at,last_error,is_default FROM gitlab_environments ORDER BY name").fetch_all(&self.pool).await.map_err(db_error)?;
+        Ok(rows.into_iter().map(|r| EnvironmentView { id:r.get("id"), namespace_id:r.get("namespace_id"), name:r.get("name"), base_url:r.get("base_url"), group_ids:r.get("group_ids"), enabled:r.get("enabled"), only_top_level:r.get("only_top_level"), include_subgroups:r.get("include_subgroups"), token_configured:true, last_tested_at:r.get("last_tested_at"), last_error:r.get("last_error"), is_default:r.get("is_default") }).collect())
     }
 }
 fn db_error(e: sqlx::Error) -> ApiError { ApiError::server_error(format!("Environment database error: {e}")) }
 
 pub fn setup_handlers(cfg: &mut web::ServiceConfig) {
     cfg.route("/environments", web::get().to(list)).route("/environments", web::post().to(create)).route("/environments/{id}", web::patch().to(update)).route("/environments/{id}", web::delete().to(remove))
+       .route("/environments/{id}/set-default", web::patch().to(set_default))
        .route("/global-config", web::get().to(get_global_config)).route("/global-config", web::put().to(save_global_config));
 }
 async fn list(store:web::Data<EnvironmentStore>) -> Result<HttpResponse,ApiError> { Ok(HttpResponse::Ok().json(store.list().await?)) }
@@ -121,6 +123,13 @@ async fn remove(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, path:we
     auth.require_admin(&req)?;
     sqlx::query("DELETE FROM gitlab_environments WHERE id=$1").bind(path.into_inner()).execute(&store.pool).await.map_err(db_error)?;
     clients.replace(store.clients().await?); groups.invalidate(); Ok(HttpResponse::NoContent().finish())
+}
+async fn set_default(req:HttpRequest, auth:web::Data<crate::auth::AuthState>, path:web::Path<i64>, store:web::Data<EnvironmentStore>) -> Result<HttpResponse,ApiError> {
+    auth.require_admin(&req)?;
+    let id=path.into_inner();
+    sqlx::query("UPDATE gitlab_environments SET is_default=FALSE WHERE is_default=TRUE").execute(&store.pool).await.map_err(db_error)?;
+    sqlx::query("UPDATE gitlab_environments SET is_default=TRUE WHERE id=$1").bind(id).execute(&store.pool).await.map_err(db_error)?;
+    Ok(HttpResponse::NoContent().finish())
 }
 
 async fn verify_gitlab_token(base_url: &str, token: &str) -> Result<(), ApiError> {

@@ -3060,7 +3060,6 @@ html.dracula-theme .analytics-waiting-notice {
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  padding-bottom: 62px;
   overflow: hidden;
 }
 
@@ -3100,12 +3099,10 @@ html.dracula-theme .analytics-waiting-notice {
 }
 
 .benchmark-panel .data-workspace .arcane-paginator {
-  position: absolute;
+  position: relative;
   z-index: 10;
-  right: 0;
-  bottom: 0;
-  left: 0;
   flex: 0 0 62px;
+  border-top: 1px solid var(--dashboard-border);
 }
 
 /* Extend the table viewport to the paginator instead of leaving a blank flex area. */
