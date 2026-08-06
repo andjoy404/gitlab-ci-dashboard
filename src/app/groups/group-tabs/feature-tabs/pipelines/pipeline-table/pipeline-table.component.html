@@ -1,142 +1,142 @@
-<nz-table
-  #nzTable
-  class="arcane-data-table scrolling-table"
-  nzSize="small"
-  tablePaginator="pipelines"
-  [nzData]="projectPipelines()"
-  [nzPageIndex]="pageIndex()"
-  (nzPageIndexChange)="pageIndex.set($event)"
-  [nzWidthConfig]="widthConfig"
-  [style.--table-width]="tableWidth + 'px'"
-  [nzScroll]="{ x: tableWidth + 'px' }"
->
-  <thead>
-    <tr>
-      @for (header of headers; track header.title) {
+<div class="pipeline-table-wrapper">
+  <nz-table
+    #nzTable
+    class="arcane-data-table scrolling-table"
+    nzSize="small"
+    tablePaginator="pipelines"
+    [nzData]="projectPipelines()"
+    [nzPageIndex]="pageIndex()"
+    (nzPageIndexChange)="pageIndex.set($event)"
+    [nzWidthConfig]="widthConfig"
+    [style.--table-width]="tableWidth + 'px'"
+    [nzScroll]="{ x: tableWidth + 'px' }"
+  >
+    <thead>
+      <tr>
+        @for (header of headers; track header.title) {
+          <th
+            nz-resizable
+            nzPreview
+            [nzMinWidth]="80"
+            [nzMaxWidth]="800"
+            [nzSortFn]="header.compare"
+            [nzShowSort]="header.sortable"
+            (nzResizeEnd)="onHeaderResize($event, header)"
+          >
+            {{ header.title }}
+            <nz-resize-handle nzDirection="right" />
+          </th>
+        }
         <th
           nz-resizable
           nzPreview
-          [nzMinWidth]="80"
-          [nzMaxWidth]="800"
-          [nzSortFn]="header.compare"
-          [nzShowSort]="header.sortable"
-          (nzResizeEnd)="onHeaderResize($event, header)"
+          [nzMinWidth]="120"
+          [nzMaxWidth]="1200"
+          (nzResizeEnd)="onJobsResize($event)"
         >
-          {{ header.title }}
+          Jobs
           <nz-resize-handle nzDirection="right" />
         </th>
-      }
-      <th
-        nz-resizable
-        nzPreview
-        [nzMinWidth]="120"
-        [nzMaxWidth]="1200"
-        (nzResizeEnd)="onJobsResize($event)"
-      >
-        Jobs
-        <nz-resize-handle nzDirection="right" />
-      </th>
-      <th
-        nz-resizable
-        nzPreview
-        nzRight
-        [nzMinWidth]="64"
-        [nzMaxWidth]="120"
-        (nzResizeEnd)="onActionResize($event)"
-      >
-        Action
-        <nz-resize-handle nzDirection="left" />
-      </th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (data of nzTable.data; track trackBy($index, data)) {
-      <tr
-        [attr.data-project-id]="data.project.id"
-        [attr.data-pipeline-id]="data.pipeline?.id"
-      >
-        <td [title]="projectNamespacePath(data.project)">{{ projectNamespacePath(data.project) }}</td>
-        <td>{{ data.project.name }}</td>
-        <td>
-          @let ref = data.pipeline?.ref || '';
-          @if (isTag(ref)) {
-            <nz-tag nzColor="green">
-              <span>{{ ref }}</span>
-            </nz-tag>
-          } @else {
-            <span class="pipeline-ref">{{ ref }}</span>
-          }
-        </td>
-        <td><span class="pipeline-trigger">{{ data.pipeline?.source || '-' }}</span></td>
-        <td>
-          @if (data.pipeline; as pipeline) {
-            {{ pipeline.updated_at | date: 'medium' : timeZone : locale }}
-          } @else {
-            -
-          }
-        </td>
-        <td>
-          @if (data.pipeline; as pipeline) {
-            <span class="pipeline-status" [class]="'pipeline-status status-' + pipeline.status">
-              <span class="pipeline-status-dot" [style.background-color]="pipeline.status | statusColor"></span>
-              {{ pipeline.status }}
-            </span>
-          } @else {
-            -
-          }
-        </td>
-        <td>
-          @if (data.pipeline; as pipeline) {
-            <gcd-jobs
-              [projectId]="data.project.id"
-              [pipelineId]="pipeline.id"
-              [scope]="getScope(pipeline.status)"
-              (downstreamStatusChange)="onDownstreamStatusChange(pipeline.id, $event)"
-            />
-          } @else {
-            -
-          }
-        </td>
-        <td nzRight>
-          @if (data.pipeline; as pipeline) {
-            <gcd-table-actions>
-              <gcd-open-gitlab-icon [url]="pipeline.web_url" />
-              <gcd-favorites-icon [groupId]="data.group_id" [projectId]="data.project.id" />
-              <gcd-download-artifacts-icon [projectId]="data.project.id" [pipelineId]="pipeline.id" />
-            </gcd-table-actions>
-          } @else {
-            -
-          }
-        </td>
+        <th
+          nz-resizable
+          nzPreview
+          nzRight
+          [nzMinWidth]="64"
+          [nzMaxWidth]="120"
+          (nzResizeEnd)="onActionResize($event)"
+        >
+          Action
+          <nz-resize-handle nzDirection="left" />
+        </th>
       </tr>
-    }
-  </tbody>
-</nz-table>
-<footer class="arcane-paginator">
-  <span class="arcane-paginator-summary">
-    Showing {{ rangeStart(projectPipelines().length, nzTable.nzPageSize) }} to
-    {{ rangeEnd(projectPipelines().length, nzTable.nzPageSize) }} of {{ projectPipelines().length }} item(s).
-  </span>
-  <div class="arcane-paginator-controls">
-    <div class="arcane-page-size-control">
-      <span>Rows per page</span>
-      <nz-select
-        class="arcane-page-size-select"
-        nzDropdownClassName="arcane-page-size-dropdown"
-        [nzDropdownMatchSelectWidth]="true"
-        [nzOptionHeightPx]="30"
-        [nzOptionOverflowSize]="7"
-        [ngModel]="nzTable.nzPageSize"
-        (ngModelChange)="changePageSize(nzTable, $event)"
-      >
-        @for (size of pageSizeOptions; track size) { <nz-option [nzValue]="size" [nzLabel]="size.toString()" /> }
-        <nz-option [nzValue]="allPageSize" nzLabel="All" />
-      </nz-select>
+    </thead>
+    <tbody>
+      @for (data of nzTable.data; track trackBy($index, data)) {
+        <tr
+          [attr.data-project-id]="data.project.id"
+          [attr.data-pipeline-id]="data.pipeline?.id"
+        >
+          <td [title]="projectNamespacePath(data.project)">{{ projectNamespacePath(data.project) }}</td>
+          <td>{{ data.project.name }}</td>
+          <td>
+            @let ref = data.pipeline?.ref || '';
+            @if (isTag(ref)) {
+              <nz-tag nzColor="green">
+                <span>{{ ref }}</span>
+              </nz-tag>
+            } @else {
+              <span class="pipeline-ref">{{ ref }}</span>
+            }
+          </td>
+          <td><span class="pipeline-trigger">{{ data.pipeline?.source || '-' }}</span></td>
+          <td>
+            @if (data.pipeline; as pipeline) {
+              {{ pipeline.updated_at | date: 'medium' : timeZone : locale }}
+            } @else {
+              -
+            }
+          </td>
+          <td>
+            @if (data.pipeline; as pipeline) {
+              <span class="pipeline-status" [class]="'pipeline-status status-' + pipeline.status">
+                <span class="pipeline-status-dot" [style.background-color]="pipeline.status | statusColor"></span>
+                {{ pipeline.status }}
+              </span>
+            } @else {
+              -
+            }
+          </td>
+          <td>
+            @if (data.pipeline; as pipeline) {
+              <gcd-jobs
+                [projectId]="data.project.id"
+                [pipelineId]="pipeline.id"
+                [scope]="getScope(pipeline.status)"
+                (downstreamStatusChange)="onDownstreamStatusChange(pipeline.id, $event)"
+              />
+            } @else {
+              -
+            }
+          </td>
+          <td nzRight>
+            @if (data.pipeline; as pipeline) {
+              <gcd-table-actions>
+                <gcd-open-gitlab-icon [url]="pipeline.web_url" />
+                <gcd-favorites-icon [groupId]="data.group_id" [projectId]="data.project.id" />
+                <gcd-download-artifacts-icon [projectId]="data.project.id" [pipelineId]="pipeline.id" />
+              </gcd-table-actions>
+            } @else {
+              -
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+<div class="pipeline-paginator-wrapper">
+  <footer class="arcane-paginator">
+    <div class="arcane-paginator-controls">
+      <div class="arcane-page-size-control">
+        <span>Rows per page</span>
+        <nz-select
+          class="arcane-page-size-select"
+          nzDropdownClassName="arcane-page-size-dropdown"
+          [nzDropdownMatchSelectWidth]="true"
+          [nzOptionHeightPx]="30"
+          [nzOptionOverflowSize]="7"
+          [ngModel]="nzTable.nzPageSize"
+          (ngModelChange)="changePageSize(nzTable, $event)"
+        >
+          @for (size of pageSizeOptions; track size) { <nz-option [nzValue]="size" [nzLabel]="size.toString()" /> }
+          <nz-option [nzValue]="allPageSize" nzLabel="All" />
+        </nz-select>
+      </div>
+      <strong>Page {{ pageIndex() }} of {{ pageCount(projectPipelines().length, nzTable.nzPageSize) }}</strong>
+      <button type="button" aria-label="First page" [disabled]="pageIndex() === 1" (click)="pageIndex.set(1)">«</button>
+      <button type="button" aria-label="Previous page" [disabled]="pageIndex() === 1" (click)="pageIndex.set(pageIndex() - 1)">‹</button>
+      <button type="button" aria-label="Next page" [disabled]="pageIndex() === pageCount(projectPipelines().length, nzTable.nzPageSize)" (click)="pageIndex.set(pageIndex() + 1)">›</button>
+      <button type="button" aria-label="Last page" [disabled]="pageIndex() === pageCount(projectPipelines().length, nzTable.nzPageSize)" (click)="pageIndex.set(pageCount(projectPipelines().length, nzTable.nzPageSize))">»</button>
     </div>
-    <strong>Page {{ pageIndex() }} of {{ pageCount(projectPipelines().length, nzTable.nzPageSize) }}</strong>
-    <button type="button" aria-label="First page" [disabled]="pageIndex() === 1" (click)="pageIndex.set(1)">«</button>
-    <button type="button" aria-label="Previous page" [disabled]="pageIndex() === 1" (click)="pageIndex.set(pageIndex() - 1)">‹</button>
-    <button type="button" aria-label="Next page" [disabled]="pageIndex() === pageCount(projectPipelines().length, nzTable.nzPageSize)" (click)="pageIndex.set(pageIndex() + 1)">›</button>
-    <button type="button" aria-label="Last page" [disabled]="pageIndex() === pageCount(projectPipelines().length, nzTable.nzPageSize)" (click)="pageIndex.set(pageCount(projectPipelines().length, nzTable.nzPageSize))">»</button>
-  </div>
-</footer>
+  </footer>
+</div>

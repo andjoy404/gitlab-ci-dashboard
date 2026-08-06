@@ -2,9 +2,36 @@
   display: flex;
   flex-direction: column;
   gap: .65rem;
+  min-height: 0;
+  flex: 1;
 }
 
-.data-workspace{display:flex;flex-direction:column;min-height:0;padding:0;border:1px solid var(--dashboard-border);border-radius:10px;background:var(--dashboard-surface);box-shadow:var(--dashboard-shadow);overflow:hidden}.runner-toolbar{padding:.65rem;border-bottom:1px solid var(--dashboard-border)}
+.data-workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  padding: 0;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 10px;
+  background: var(--dashboard-surface);
+  box-shadow: var(--dashboard-shadow);
+  overflow: hidden;
+}
+
+.runner-toolbar {
+  padding: .65rem;
+  border-bottom: 1px solid var(--dashboard-border);
+  flex-shrink: 0;
+}
+
+/* gcd-runner-table takes remaining space */
+gcd-runner-table {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+}
 
 .runner-summary {
   display: flex;

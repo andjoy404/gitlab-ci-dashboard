@@ -1,3 +1,100 @@
+/* Root host: column flex layout */
+:host {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+}
+
+/* Pagination footer styling */
+.arcane-paginator {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 1rem !important;
+  padding: 0.65rem !important;
+  border-top: 1px solid var(--dashboard-border) !important;
+  background: var(--dashboard-surface) !important;
+  flex-shrink: 0 !important;
+}
+
+.arcane-paginator-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.arcane-page-size-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.arcane-page-size-control span {
+  color: var(--dashboard-muted);
+  white-space: nowrap;
+}
+
+.arcane-paginator-controls strong {
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.arcane-paginator-controls button {
+  padding: 0.4rem 0.6rem;
+  font-size: 12px;
+  min-width: 28px;
+  flex-shrink: 0;
+}
+
+/* nz-table: flex grow to fill space */
+nz-table {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+}
+
+/* Force ng-zorro table to use flex layout */
+:host ::ng-deep .ant-table {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+  border: none;
+}
+
+:host ::ng-deep .ant-table-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+}
+
+:host ::ng-deep .ant-table-container {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+}
+
+:host ::ng-deep .ant-table-head {
+  flex-shrink: 0 !important;
+}
+
+/* Table body scrolls */
+:host ::ng-deep .ant-table-content {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: scroll !important;
+  overflow-x: auto !important;
+  scrollbar-gutter: stable;
+}
+
 td:first-child {
   strong,
   small {
